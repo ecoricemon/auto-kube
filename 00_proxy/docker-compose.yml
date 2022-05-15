@@ -1,0 +1,12 @@
+# ref: https://www.envoyproxy.io/docs/envoy/latest/start/docker
+
+version: '3'
+services:
+  envoy:
+    image: envoyproxy/envoy:v1.21.2
+    ports:
+    - "9901:9901"
+    - "10000:10000"
+    volumes:
+    - ./envoy.yaml:/etc/envoy/envoy.yaml
+
