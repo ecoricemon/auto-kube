@@ -1,56 +1,74 @@
 #!/bin/sh
 
 my_exit() {
-	echo "Usage: ./kube.sh [run|ip|ssh|pf] [ext|0|1|2|pn]"
+	echo "Usage: ./kube.sh [run|ssh|shutdown] [all|ext|0|1|2]"
 	echo "run : Run a virtual machine"
-	echo "ip : Get IP addresses of a virtual machine"
 	echo "ssh : Login to a virtual machine"
-	echo "pf : Port forward"
-	echo "m, 1, 2, 3 : For each virtual machine"
-	echo "pn : A port number to be forwarded, which is valid if it's in 8000 ~ 65535"
+	echo "shutdown : Shut down a virtual machine"
+	echo "all, ext, 0, 1, 2 : For each virtual machine"
 	exit
 }
 
+if [ $# -ne 2 ]; then
+	my_exit
+fi
+
 VM_USER=kube
 SSH_PORT=8022
-VM0_IP=10.0.3.10
-VM1_IP=10.0.3.11
-VM2_IP=10.0.3.12
 
-SSH_CMD=my_exit
-PF_CMD=my_exit
-
-if [ $# -eq 2 ]; then
-	if [ $2 = "ext" ]; then
+get_vm_info() {
+	if [ $1 = "ext" ]; then
 		VM_NAME="ubuntu server ext"
-		SSH_CMD="ssh -p $SSH_PORT $VM_USER@localhost"
-	elif [ $2 = "0" ]; then
+	elif [ $1 = "0" ]; then
 		VM_NAME="ubuntu server 0"
-		SSH_CMD="ssh -p $SSH_PORT -t $VM_USER@localhost ssh $VM_USER@$VM0_IP"
-	elif [ $2 = "1" ]; then
+		VM_IP=10.0.3.10
+	elif [ $1 = "1" ]; then
 		VM_NAME="ubuntu server 1"
-		SSH_CMD="ssh -p $SSH_PORT -t $VM_USER@localhost ssh $VM_USER@$VM1_IP"
-	elif [ $2 = "2" ]; then
+		VM_IP=10.0.3.11
+	elif [ $1 = "2" ]; then
 		VM_NAME="ubuntu server 2"
-		SSH_CMD="ssh -p $SSH_PORT -t $VM_USER@localhost ssh $VM_USER@$VM2_IP"
-	elif [ $2 -ge 8000 ] && [ $2 -le 65535 ]; then
-		PF_CMD="ssh -L$2:localhost:$2 $VM_USER@$VM_MASTER_IP"
-	else
-		my_exit
+		VM_IP=10.0.3.12
 	fi
+}
 
-	if [ $1 = "run" ]; then	
-		VBoxManage startvm "$VM_NAME" --type headless
-	elif [ $1 = "ip" ]; then
-		VBoxManage guestproperty enumerate "$VM_NAME" | grep IP
-	elif [ $1 = "ssh" ]; then
-		$SSH_CMD
-	elif [ $1 = "pf" ]; then
-		$PF_CMD
+run_vm() {
+	get_vm_info $1
+	VBoxManage startvm "$VM_NAME" --type headless
+}
+
+ssh_vm() {
+	get_vm_info $1
+	if [ $1 = "ext" ]; then
+		ssh -p $SSH_PORT $VM_USER@localhost
 	else
-		my_exit
+		ssh -J $VM_USER@localhost:$SSH_PORT $VM_USER@$VM_IP
 	fi
-else
-	my_exit
+}
+
+shutdown_vm() {
+	get_vm_info $1
+	if [ $1 = "ext" ]; then
+		ssh -p $SSH_PORT $VM_USER@localhost sudo shutdown now
+	else
+		ssh -J $VM_USER@localhost:$SSH_PORT $VM_USER@$VM_IP sudo shutdown now
+	fi
+}
+
+if [ $1 = "run" ]; then
+	for vm in "ext" "0" "1" "2"
+	do
+		if [ $2 = "all" ] || [ $2 = $vm ]; then
+			run_vm $vm
+		fi
+	done
+elif [ $1 = "ssh" ]; then
+	ssh_vm $2
+elif [ $1 = "shutdown" ]; then
+	for vm in "0" "1" "2" "ext"
+	do
+		if [ $2 = "all" ] || [ $2 = $vm ]; then
+			shutdown_vm $vm
+		fi
+	done
 fi
 

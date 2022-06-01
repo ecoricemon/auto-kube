@@ -1,0 +1,7 @@
+---
+- name: My playbook
+  hosts: nodes
+  tasks:
+  - name: My task
+    command: "touch /home/kube/asdf"
+

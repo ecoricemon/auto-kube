@@ -1,0 +1,37 @@
+---
+# Ansible inventory
+all:
+  children:
+    ext:
+      hosts:
+        localhost:
+      vars:
+        ansible_user: kube
+        ansible_port: 8022
+    nodes:
+      hosts:
+        10.0.3.10:
+        10.0.3.11:
+        10.0.3.12:
+      vars:
+        ansible_user: kube
+        ansible_ssh_common_args: "-J kube@localhost:8022"
+    node0:
+      hosts:
+        10.0.3.10:
+      vars:
+        ansible_user: kube
+        ansible_ssh_common_args: "-J kube@localhost:8022"
+    node1:
+      hosts:
+        10.0.3.11:
+      vars:
+        ansible_user: kube
+        ansible_ssh_common_args: "-J kube@localhost:8022"
+    node2:
+      hosts:
+        10.0.3.12:
+      vars:
+        ansible_user: kube
+        ansible_ssh_common_args: "-J kube@localhost:8022"
+
