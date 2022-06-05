@@ -1,0 +1,18 @@
+---
+# Disable swapping on all nodes
+- hosts: nodes
+  gather_facts: no
+  tasks:
+  - name: Check swapping
+    shell: cat /etc/fstab | grep swap
+    register: fstab_swap # Keep the result of this task
+  - debug:
+      msg: "Swapping is already disabled, Next step will be skipped"
+    when: fstab_swap.stdout.find("#/swap") != -1
+  - name: Disable swapping
+    become: yes # Privileged
+    shell: |
+      sed -i 's/\/swap/#\/swap/' /etc/fstab
+      swapoff -a
+    when: fstab_swap.stdout.find("#/swap") == -1 # Do this task when '#/swap' is NOT in /etc/fstab
+  

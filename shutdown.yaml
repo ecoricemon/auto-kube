@@ -1,9 +1,0 @@
----
-- name: My playbook
-  hosts: node2
-  gather_facts: no
-  tasks:
-  - name: My task
-    become: yes
-    command: /sbin/shutdown
-

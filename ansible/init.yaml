@@ -1,0 +1,7 @@
+---
+# Disable swapping on all nodes
+- import_playbook: playbooks/swapoff.yaml
+
+# Install docker
+- import_playbook: playbooks/install-docker.yaml
+ 
