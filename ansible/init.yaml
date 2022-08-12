@@ -4,4 +4,10 @@
 
 # Install docker
 - import_playbook: playbooks/install-docker.yaml
+
+# Enable kernel modules for container
+- import_playbook: playbooks/enable-km.yaml
+
+# Install kube
+- import_playbook: playbooks/install-kube.yaml
  
