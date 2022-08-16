@@ -1,0 +1,11 @@
+---
+# Pull kube images
+- hosts: node0
+  gather_facts: no
+  tasks:
+  - name: Pull kube images
+    shell: >
+      kubeadm config images list | 
+      while read IMG; do
+      docker image pull $IMG; done
+

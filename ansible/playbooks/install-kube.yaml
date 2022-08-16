@@ -36,4 +36,8 @@
     become: yes
     shell: apt-mark hold kubelet kubeadm kubectl
     when: "'kubelet' not in ansible_facts.packages"
+  - name: Apply bash autocompletion
+    lineinfile:
+      path: ~/.bashrc
+      line: source <(kubectl completion bash)
 

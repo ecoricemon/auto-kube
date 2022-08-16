@@ -65,4 +65,9 @@
       name: "{{ ansible_user }}"
       append: yes
       groups: docker
-
+  - name: Install docker-compose
+    become: yes
+    apt:
+      pkg:
+      - docker-compose
+    when: "'docker-compose' not in ansible_facts.packages"

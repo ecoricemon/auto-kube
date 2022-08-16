@@ -1,0 +1,81 @@
+---
+# Run private registry
+- hosts: node0
+  gather_facts: no
+  tasks:
+
+  # Pull registry image
+  - name: Check registry image
+    shell: docker image ls | grep registry
+    register: ls_registry
+  - debug:
+      msg: "There is the registry image. Next step will be skipped"
+    when: ls_registry.stdout.find("registry") != -1
+  - name: Pull registry image
+    shell: docker image pull registry
+    when: ls_registry.stdout.find("registry") == -1
+  
+  # Create some directories
+  - name: Create .registry directories
+    file:
+      path: "{{ item }}"
+      state: directory
+    loop:
+    - ~/.registry/data
+    - ~/.registry/certs
+    - ~/.registry/auth
+
+  # Create certificate
+  - name: Check cert.key and cert.crt
+    find:
+      paths: ~/.registry/certs
+      patterns: 'cert.key,cert.crt'
+    register: certfiles
+  - debug:
+      msg: "There are cert files. Next step will be skipped"
+    when: certfiles.matched == 2
+  - name: Create cert.key
+    shell: openssl genrsa -out ~/.registry/certs/cert.key 2048
+    when: certfiles.matched != 2
+  - name: Create cert.csr
+    shell: openssl req -new -key ~/.registry/certs/cert.key -out ~/.registry/certs/cert.csr -subj "/C=KR/O=Organization/CN=registry.org"
+    when: certfiles.matched != 2
+  - name: Create cert.ext
+    blockinfile:
+      path: ~/.registry/certs/cert.ext
+      create: yes
+      block: |
+        [default]
+        subjectAltName = IP:{{ hostvars['node0']['ansible_host'] }}
+    when: certfiles.matched != 2
+  - name: Create cert.crt
+    shell: openssl x509 -req -days 36500 -in ~/.registry/certs/cert.csr -signkey ~/.registry/certs/cert.key -extfile ~/.registry/certs/cert.ext -out ~/.registry/certs/cert.crt
+    when: certfiles.matched != 2
+  
+  # Create docker-compose file
+  - name: Create docker-compose.yaml
+    blockinfile:
+      path: ~/.registry/docker-compose.yaml
+      create: yes
+      block: |
+        registry:
+          container_name: registry
+          restart: always
+          image: registry
+          ports:
+          - 5000:5000
+          environment:
+            REGISTRY_HTTP_TLS_CERTIFICATE: /certs/cert.crt
+            REGISTRY_HTTP_TLS_KEY: /certs/cert.key
+            #REGISTRY_AUTH: htpasswd
+            #REGISTRY_AUTH_HTPASSWD_PATH: /auth/htpasswd
+            #REGISTRY_AUTH_HTPASSWD_REALM: Registry Realm
+          volumes:
+          - ~/.registry/data:/var/lib/registry
+          - ~/.registry/certs:/certs
+          #- ~/.registry/auth:/auth
+
+  # Run registry
+  - name: Run registry
+    shell: docker-compose -f ~/.registry/docker-compose.yaml up -d
+

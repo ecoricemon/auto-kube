@@ -1,0 +1,25 @@
+---
+# Clean
+- hosts: node0
+  gather_facts: no
+  tasks:
+  - name: Reset cluster
+    become: yes
+    shell: >
+      kubeadm reset
+      -f
+      --cri-socket=/run/containerd/containerd.sock
+  - name: Delete ~/.kube
+    file:
+      path: ~/.kube
+      state: absent
+  - name: Delete /etc/cni/net.d/*
+    become: yes
+    file:
+      path: /etc/cni/net.d
+      state: absent
+  - become: yes
+    file:
+      path: /etc/cni/net.d
+      state: directory
+
