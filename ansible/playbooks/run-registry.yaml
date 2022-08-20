@@ -46,7 +46,9 @@
       create: yes
       block: |
         [default]
-        subjectAltName = IP:{{ hostvars['node0']['ansible_host'] }}
+        subjectAltName = \
+          IP:{{ hostvars['node0']['ansible_host'] }}, \
+          DNS:registry.org
     when: certfiles.matched != 2
   - name: Create cert.crt
     shell: openssl x509 -req -days 36500 -in ~/.registry/certs/cert.csr -signkey ~/.registry/certs/cert.key -extfile ~/.registry/certs/cert.ext -out ~/.registry/certs/cert.crt

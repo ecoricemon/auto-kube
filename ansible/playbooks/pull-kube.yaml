@@ -7,5 +7,7 @@
     shell: >
       kubeadm config images list | 
       while read IMG; do
-      docker image pull $IMG; done
+      docker image pull $IMG;
+      docker image tag $IMG 
+      done
 
