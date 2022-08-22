@@ -1,23 +1,23 @@
 ---
 # Run private registry
 - hosts: node0
-  gather_facts: no
+  gather_facts: yes
   tasks:
 
   # Pull registry image
   - name: Check registry image
-    shell: docker image ls | grep registry
+    ansible.builtin.shell: docker image ls | grep registry
     register: ls_registry
-  - debug:
+  - ansible.builtin.debug:
       msg: "There is the registry image. Next step will be skipped"
     when: ls_registry.stdout.find("registry") != -1
   - name: Pull registry image
-    shell: docker image pull registry
+    ansible.builtin.shell: docker image pull registry
     when: ls_registry.stdout.find("registry") == -1
   
   # Create some directories
   - name: Create .registry directories
-    file:
+    ansible.builtin.file:
       path: "{{ item }}"
       state: directory
     loop:
@@ -27,21 +27,21 @@
 
   # Create certificate
   - name: Check cert.key and cert.crt
-    find:
+    ansible.builtin.find:
       paths: ~/.registry/certs
       patterns: 'cert.key,cert.crt'
     register: certfiles
-  - debug:
+  - ansible.builtin.debug:
       msg: "There are cert files. Next step will be skipped"
     when: certfiles.matched == 2
   - name: Create cert.key
-    shell: openssl genrsa -out ~/.registry/certs/cert.key 2048
+    ansible.builtin.shell: openssl genrsa -out ~/.registry/certs/cert.key 2048
     when: certfiles.matched != 2
   - name: Create cert.csr
-    shell: openssl req -new -key ~/.registry/certs/cert.key -out ~/.registry/certs/cert.csr -subj "/C=KR/O=Organization/CN=registry.org"
+    ansible.builtin.shell: openssl req -new -key ~/.registry/certs/cert.key -out ~/.registry/certs/cert.csr -subj "/C=KR/O=Organization/CN=registry.org"
     when: certfiles.matched != 2
   - name: Create cert.ext
-    blockinfile:
+    ansible.builtin.blockinfile:
       path: ~/.registry/certs/cert.ext
       create: yes
       block: |
@@ -51,12 +51,12 @@
           DNS:registry.org
     when: certfiles.matched != 2
   - name: Create cert.crt
-    shell: openssl x509 -req -days 36500 -in ~/.registry/certs/cert.csr -signkey ~/.registry/certs/cert.key -extfile ~/.registry/certs/cert.ext -out ~/.registry/certs/cert.crt
+    ansible.builtin.shell: openssl x509 -req -days 36500 -in ~/.registry/certs/cert.csr -signkey ~/.registry/certs/cert.key -extfile ~/.registry/certs/cert.ext -out ~/.registry/certs/cert.crt
     when: certfiles.matched != 2
   
   # Create docker-compose file
   - name: Create docker-compose.yaml
-    blockinfile:
+    ansible.builtin.blockinfile:
       path: ~/.registry/docker-compose.yaml
       create: yes
       block: |
@@ -67,6 +67,7 @@
           ports:
           - 5000:5000
           environment:
+            REGISTRY_STORAGE_DELETE_ENABLED: "true"
             REGISTRY_HTTP_TLS_CERTIFICATE: /certs/cert.crt
             REGISTRY_HTTP_TLS_KEY: /certs/cert.key
             #REGISTRY_AUTH: htpasswd
@@ -79,5 +80,25 @@
 
   # Run registry
   - name: Run registry
-    shell: docker-compose -f ~/.registry/docker-compose.yaml up -d
+    ansible.builtin.shell: docker-compose -f ~/.registry/docker-compose.yaml up -d
+
+  # Copy cert into docker cert dir
+  - name: Copy cert into the cert directory
+    become: yes
+    ansible.builtin.copy:
+      remote_src: yes
+      src: "{{ ansible_env.HOME }}/.registry/certs/cert.crt"
+      dest: /etc/docker/certs.d/registry.org:5000/
+      force: no
+
+# Append registry name on hosts
+- hosts: nodes
+  gather_facts: no
+  tasks:
+  - name: Append registry on /etc/hosts
+    become: yes
+    ansible.builtin.blockinfile:
+      path: /etc/hosts
+      block: |
+        {{ hostvars['node0']['ansible_host'] }} registry.org
 

@@ -3,14 +3,14 @@
 - hosts: nodes
   gather_facts: no
   tasks:
-  - package_facts: # Get ansible_facts.packages object
+  - ansible.builtin.package_facts:
       manager: auto
-  - debug:
+  - ansible.builtin.debug:
       msg: "containerd.io is already installed. Next step will be skipped"
     when: "'containerd.io' in ansible_facts.packages"
   - name: Install docker prerequisites
     become: yes
-    apt:
+    ansible.builtin.apt:
       update_cache: yes
       pkg:
       - ca-certificates
@@ -20,54 +20,57 @@
     when: "'containerd.io' not in ansible_facts.packages"
   - name: Add apt repository
     become: yes
-    shell: |
+    ansible.builtin.shell: |
       curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
       echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
     when: "'containerd.io' not in ansible_facts.packages"
   - name: Install container runtime
     become: yes
-    apt:
+    ansible.builtin.apt:
       update_cache: yes
       pkg:
       - containerd.io
     when: "'containerd.io' not in ansible_facts.packages"
   - name: Create /etc/containerd
     become: yes
-    file:
+    ansible.builtin.file:
       path: /etc/containerd
       state: directory
   - name: Set /etc/containerd/config.toml
     become: yes
-    shell: containerd config default | tee /etc/containerd/config.toml
+    ansible.builtin.shell: containerd config default | tee /etc/containerd/config.toml
   - name: Restart containerd
     become: yes
-    shell: systemctl restart containerd
+    ansible.builtin.shell: systemctl restart containerd
 
 # Install docker
 - hosts: node0
   gather_facts: no
   tasks:
+  - ansible.builtin.package_facts:
+      manager: auto
   - name: Install docker engine
     become: yes
-    apt:
+    ansible.builtin.apt:
       pkg:
       - docker-ce
       - docker-ce-cli
     when: "'docker-ce' not in ansible_facts.packages"
   - name: Add docker group
     become: yes
-    group:
+    ansible.builtin.group:
       name: docker
       state: present
   - name: Add user into the docker group
     become: yes
-    user:
+    ansible.builtin.user:
       name: "{{ ansible_user }}"
       append: yes
       groups: docker
   - name: Install docker-compose
     become: yes
-    apt:
+    ansible.builtin.apt:
       pkg:
       - docker-compose
     when: "'docker-compose' not in ansible_facts.packages"
+

@@ -12,25 +12,27 @@ GUEST_2=kube@$IP_2
 SSH='ssh -o ConnectionAttempts=1 -o ConnectTimeout=1'
 alias myssh=$SSH
 
-if [ $1 = 'e' ]; then
-	myssh $GUEST_E
-elif [ $1 = '0' ]; then
-	myssh $GUEST_0
-elif [ $1 = '1' ]; then
-	myssh $GUEST_1
-elif [ $1 = '2' ]; then
-	myssh $GUEST_2
-elif [ $1 = 'mux' ]; then
+if [ $# -eq 0 ]; then
     tmux new -s kube -n vm0 "$SSH $GUEST_0" \; \
 	neww -n vm1 "$SSH $GUEST_1" \; \
 	neww -n vm2 "$SSH $GUEST_2" \; \
 	neww -n vmext "$SSH $GUEST_E" \; \
 	neww -n host
-elif [ $1 = 'off' ]; then
-	myssh $GUEST_E "echo kube | sudo -S poweroff"
-	myssh $GUEST_0 "echo kube | sudo -S poweroff"
-	myssh $GUEST_1 "echo kube | sudo -S poweroff"
-	myssh $GUEST_2 "echo kube | sudo -S poweroff"
+elif [ $# -eq 1 ]; then
+	if [ $1 = 'e' ]; then
+		myssh $GUEST_E
+	elif [ $1 = '0' ]; then
+		myssh $GUEST_0
+	elif [ $1 = '1' ]; then
+		myssh $GUEST_1
+	elif [ $1 = '2' ]; then
+		myssh $GUEST_2
+	elif [ $1 = 'off' ]; then
+		myssh $GUEST_E "echo kube | sudo -S poweroff"
+		myssh $GUEST_0 "echo kube | sudo -S poweroff"
+		myssh $GUEST_1 "echo kube | sudo -S poweroff"
+		myssh $GUEST_2 "echo kube | sudo -S poweroff"
+	fi
 fi
 
 unalias myssh

@@ -5,21 +5,21 @@
   tasks:
   - name: Reset cluster
     become: yes
-    shell: >
+    ansible.builtin.shell: >
       kubeadm reset
       -f
       --cri-socket=/run/containerd/containerd.sock
   - name: Delete ~/.kube
-    file:
+    ansible.builtin.file:
       path: ~/.kube
       state: absent
   - name: Delete /etc/cni/net.d/*
     become: yes
-    file:
+    ansible.builtin.file:
       path: /etc/cni/net.d
       state: absent
   - become: yes
-    file:
+    ansible.builtin.file:
       path: /etc/cni/net.d
       state: directory
 

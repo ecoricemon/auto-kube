@@ -1,6 +1,6 @@
 ---
 # Clean first
-- import_playbook: reset-cluster.yaml
+- import_playbook: cluster-reset.yaml
 
 # Make cluter
 - hosts: node0
@@ -8,7 +8,7 @@
   tasks:
   - name: Make cluster
     become: yes
-    shell: >
+    ansible.builtin.shell: >
       kubeadm init
       -f
       --cri-socket=/run/containerd/containerd.sock

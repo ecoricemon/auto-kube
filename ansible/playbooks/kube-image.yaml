@@ -1,0 +1,15 @@
+---
+# Pull kube images
+- hosts: node0
+  gather_facts: no
+  tasks:
+  - name: Pull kube images
+    ansible.builtin.shell: >
+      kubeadm config images list | 
+      while read IMG;
+      do
+        docker image pull $IMG;
+        docker image tag $IMG registry.org:5000/$IMG;
+        docker image push registry.org:5000/$IMG;
+      done
+
