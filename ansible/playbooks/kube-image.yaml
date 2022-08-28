@@ -1,15 +1,29 @@
 ---
-# Pull kube images
+# Pull kube images ans push it to private registry
 - hosts: node0
   gather_facts: no
   tasks:
-  - name: Pull kube images
-    ansible.builtin.shell: >
-      kubeadm config images list | 
-      while read IMG;
-      do
-        docker image pull $IMG;
-        docker image tag $IMG registry.org:5000/$IMG;
-        docker image push registry.org:5000/$IMG;
+  - name: Get kube image
+    ansible.builtin.shell: |
+      cat /etc/containerd/config.toml | grep sandbox_image | sed "s/.*= //" | sed 's/"//g' > ~/srcimages
+      echo registry.org:5000/$(cat ~/srcimages) > ~/destimages
+      srcrepo=$(kubeadm config print init-defaults | grep imageRepository | sed "s/^imageRepository: //")
+      kubeadm config images list --kubernetes-version "v1.24.4" >> srcimages
+      kubeadm config images list --kubernetes-version "v1.24.4" --image-repository "registry.org:5000/$srcrepo" >> destimages
+      linenum=$(wc -l srcimages | cut -d ' ' -f 1)
+      i=1
+      while [ $i -le $linenum ]; do
+        src=$(sed "$i!d;q" srcimages)
+        dest=$(sed "$i!d;q" destimages)
+        repo=$(echo $dest | sed 's/registry.org:5000\///' | cut -d ':' -f 1)
+        tag=$(echo $dest | sed 's/registry.org:5000\///' | cut -d ':' -f 2)
+        existtags=$(curl -s --insecure https://registry.org:5000/v2/$repo/tags/list)
+        if [ -z $(echo $existtags | grep $tag) ]; then
+          docker image pull $src
+          docker image tag $src $dest
+          docker image push $dest
+        fi
+        i=$((i+1))
       done
+      rm srcimages destimages
 

@@ -8,6 +8,7 @@
   - name: Check registry image
     ansible.builtin.shell: docker image ls | grep registry
     register: ls_registry
+    failed_when: ls_registry == 2
   - ansible.builtin.debug:
       msg: "There is the registry image. Next step will be skipped"
     when: ls_registry.stdout.find("registry") != -1
