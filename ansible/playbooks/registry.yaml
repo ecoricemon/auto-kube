@@ -8,7 +8,7 @@
   - name: Check registry image
     ansible.builtin.shell: docker image ls | grep registry
     register: ls_registry
-    failed_when: ls_registry == 2
+    failed_when: ls_registry.rc == 2
   - ansible.builtin.debug:
       msg: "There is the registry image. Next step will be skipped"
     when: ls_registry.stdout.find("registry") != -1
@@ -54,7 +54,7 @@
   - name: Create cert.crt
     ansible.builtin.shell: openssl x509 -req -days 36500 -in ~/.registry/certs/cert.csr -signkey ~/.registry/certs/cert.key -extfile ~/.registry/certs/cert.ext -out ~/.registry/certs/cert.crt
     when: certfiles.matched != 2
-  
+
   # Create docker-compose file
   - name: Create docker-compose.yaml
     ansible.builtin.blockinfile:
@@ -79,27 +79,67 @@
           - ~/.registry/certs:/certs
           #- ~/.registry/auth:/auth
 
-  # Run registry
-  - name: Run registry
-    ansible.builtin.shell: docker-compose -f ~/.registry/docker-compose.yaml up -d
-
-  # Copy cert into docker cert dir
+  # Copy cert
   - name: Copy cert into the cert directory
     become: yes
     ansible.builtin.copy:
       remote_src: yes
       src: "{{ ansible_env.HOME }}/.registry/certs/cert.crt"
       dest: /etc/docker/certs.d/registry.org:5000/
-      force: no
 
-# Append registry name on hosts
+  # Run registry
+  - name: Run registry
+    ansible.builtin.shell: docker-compose -f ~/.registry/docker-compose.yaml up -d
+
 - hosts: nodes
   gather_facts: no
   tasks:
+
+  # Append registry name on hosts
   - name: Append registry on /etc/hosts
     become: yes
     ansible.builtin.blockinfile:
       path: /etc/hosts
       block: |
         {{ hostvars['node0']['ansible_host'] }} registry.org
+
+  # Copy crt
+  - name: Copy crt
+    become: yes
+    ansible.posix.synchronize: TODO
+      src: /etc/docker/certs.d/registry.org:5000/cert.crt
+      #src: /home/kube/.registry/certs/cert.crt
+      #dest: /home/kube/cert.crt
+      dest: /etc/containerd/certs.d/registry.org:5000/
+      rsync_path: sudo rsync
+    delegate_to: node0
+
+  # Set sandbox repo
+  - name: Check containerd sandbox repo
+    ansible.builtin.shell: cat /etc/containerd/config.toml | grep 'sandbox_image = "registry.org:5000/'
+    register: grep_sandbox
+    failed_when: grep_sandbox.rc == 2
+  - ansible.builtin.debug:
+      msg: "There's no need to set containerd sandbox image"
+    when: grep_sandbox.rc == 0
+  - name: Set containerd sandbox repo
+    become: yes 
+    ansible.builtin.shell: >
+      sed -i 's/sandbox_image = "/sandbox_image = "registry.org:5000\//' /etc/containerd/config.toml
+    when: grep_sandbox.rc == 1
+
+  # Set registry in the containerd conf file
+  - name: Create /etc/containerd/certs.d/registry.org:5000/hosts.toml
+    become: yes
+    ansible.builtin.blockinfile:
+      path: /etc/containerd/certs.d/registry.org:5000/hosts.toml
+      create: yes
+      block: |
+        server = "https://registry.org:5000"
+
+        [host."https.//registry.org:5000"]
+          ca = "/etc/containerd/certs.d/registry.org:5000/cert.crt"
+  - name: Restart containerd
+    become: yes
+    ansible.builtin.shell: systemctl restart containerd
 

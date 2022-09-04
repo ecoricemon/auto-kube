@@ -1,0 +1,22 @@
+---
+# Disable swap
+- import_playbook: swap.yaml
+
+# Install docker
+- import_playbook: docker.yaml
+
+# Enable kernel modules for container
+- import_playbook: kernel-module.yaml
+
+# Install kube
+- import_playbook: kube.yaml
+
+# Set ssh
+- import_playbook: ssh.yaml
+
+# Run private registry
+- import_playbook: registry.yaml
+
+# Get kube image
+- import_playbook: kube-image.yaml
+

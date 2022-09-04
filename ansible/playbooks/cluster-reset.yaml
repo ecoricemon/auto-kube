@@ -6,9 +6,9 @@
   - name: Reset cluster
     become: yes
     ansible.builtin.shell: >
-      kubeadm reset
-      -f
-      --cri-socket=/run/containerd/containerd.sock
+      kubeadm reset \
+        --force \
+        --cri-socket "unix:///run/containerd/containerd.sock"
   - name: Delete ~/.kube
     ansible.builtin.file:
       path: ~/.kube

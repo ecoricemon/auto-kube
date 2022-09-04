@@ -9,11 +9,10 @@
   - name: Make cluster
     become: yes
     ansible.builtin.shell: >
-      echo "
-      --cri-socket=/run/containerd/containerd.sock
-      --pod-network-cidr=10.244.0.0/16
-      --apiserver-advertise-address={{ hostvars['node0']['ansible_host'] }}
-      --image-repository=registry.org:5000/k8s.gcr.io
-      --kubernetes-version=v
-TODO
+      kubeadm init \
+        --cri-socket "unix:///run/containerd/containerd.sock" \
+        --pod-network-cidr "10.244.0.0/16" \
+        --apiserver-advertise-address "{{ hostvars['node0']['ansible_host'] }}" \
+        --image-repository "registry.org:5000/k8s.gcr.io" \
+        --kubernetes-version "v1.24.4"
 
