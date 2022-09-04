@@ -4,7 +4,7 @@
 
 # Make cluter
 - hosts: node0
-  gather_facts: no
+  gather_facts: yes
   tasks:
   - name: Make cluster
     become: yes
@@ -15,4 +15,53 @@
         --apiserver-advertise-address "{{ hostvars['node0']['ansible_host'] }}" \
         --image-repository "registry.org:5000/k8s.gcr.io" \
         --kubernetes-version "v1.24.4"
+    register: init
+  - name: Keep join command
+    ansible.builtin.shell: echo "{{ init.stdout }}" > ~/.init.tmp
+  - ansible.builtin.shell: |
+      cat ~/.init.tmp | gawk "NR>=$(cat ~/.init.tmp | grep -n 'kubeadm join' | cut -d ':' -f 1)" > ~/.joincmd.tmp
+  - name: Remove temporary file
+    ansible.builtin.file:
+      path: ~/.init.tmp
+      state: absent
+  - name: Copy kube user config
+    ansible.builtin.file:
+      path: ~/.kube
+      state: directory
+  - become: yes
+    ansible.builtin.copy:
+      remote_src: yes
+      src: /etc/kubernetes/admin.conf
+      dest: "{{ ansible_env.HOME }}/.kube/config"
+  - become: yes
+    ansible.builtin.file:
+      path: "{{ ansible_env.HOME }}/.kube/config"
+      owner: "{{ ansible_env.USER }}"
+      group: "{{ ansible_env.USER }}"
 
+# Join the cluster
+- hosts: nodes:!node0
+  gather_facts: yes
+  tasks:
+  - name: Copy join cmd
+    ansible.posix.synchronize:
+      src: "{{ ansible_env.HOME }}/.joincmd.tmp"
+      dest: ~/.joincmd.tmp
+    delegate_to: node0
+  - name: Join the cluster
+    become: yes
+    ansible.builtin.shell: sh "{{ ansible_env.HOME }}/.joincmd.tmp"
+  - name: Remove temporary file
+    ansible.builtin.file:
+      path: ~/.joincmd.tmp
+      state: absent
+
+# Remove temporary file
+- hosts: node0
+  gather_facts: no
+  tasks:
+  - name: Remove temporary file
+    ansible.builtin.file:
+      path: ~/.joincmd.tmp
+      state: absent
+ 
