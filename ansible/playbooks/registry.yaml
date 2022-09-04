@@ -144,7 +144,21 @@
       sed -i 's/sandbox_image = "/sandbox_image = "registry.org:5000\//' /etc/containerd/config.toml
     when: grep_sandbox.rc == 1
 
-  # Set registry in the containerd conf file
+  # Set containerd config path
+  - name: Check containerd config path
+    ansible.builtin.shell: cat /etc/containerd/config.toml | grep 'config_path = "/etc/containerd/certs.d'
+    register: grep_config
+    failed_when: grep_config.rc == 2
+  - ansible.builtin.debug:
+      msg: "There's no need to set containerd config path"
+    when: grep_config.rc == 0
+  - name: Set config path in containerd config.toml
+    become: yes
+    ansible.builtin.shell: >
+      sed -i 's/config_path = "/config_path = "\/etc\/containerd\/certs.d/' /etc/containerd/config.toml
+    when: grep_config.rc == 1
+
+  # Create registry conf file
   - name: Create /etc/containerd/certs.d/registry.org:5000/hosts.toml
     become: yes
     ansible.builtin.blockinfile:
@@ -153,8 +167,10 @@
       block: |
         server = "https://registry.org:5000"
 
-        [host."https.//registry.org:5000"]
+        [host."https://registry.org:5000"]
           ca = "/etc/containerd/certs.d/registry.org:5000/cert.crt"
+
+  # Restart containerd
   - name: Restart containerd
     become: yes
     ansible.builtin.shell: systemctl restart containerd
