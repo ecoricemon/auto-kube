@@ -91,28 +91,44 @@
   - name: Run registry
     ansible.builtin.shell: docker-compose -f ~/.registry/docker-compose.yaml up -d
 
+# Copy crt into containerd path
+- hosts: nodes
+  gather_facts: yes
+  tasks:
+
+  # Copy crt to home dir
+  - name: Copy temporary crt
+    ansible.posix.synchronize:
+      src: /etc/docker/certs.d/registry.org:5000/cert.crt
+      dest: "{{ ansible_env.HOME }}/cert.crt"
+    delegate_to: node0
+
+  # Copy crt to privileged path
+  - name: Copy crt to /etc/containerd/certs.d/registry.org:5000/
+    become: yes
+    ansible.builtin.copy:
+      remote_src: yes
+      src: "{{ ansible_env.HOME }}/cert.crt"
+      dest: /etc/containerd/certs.d/registry.org:5000/cert.crt
+   
+  # Remove temp crt
+  - name: Remove temporary crt
+    ansible.builtin.file:
+      path: "{{ ansible_env.HOME }}/cert.crt"
+      state: absent
+
+# Set containerd
 - hosts: nodes
   gather_facts: no
   tasks:
 
-  # Append registry name on hosts
-  - name: Append registry on /etc/hosts
+  # Append registry name in hosts file
+  - name: Append registry in /etc/hosts
     become: yes
     ansible.builtin.blockinfile:
       path: /etc/hosts
       block: |
         {{ hostvars['node0']['ansible_host'] }} registry.org
-
-  # Copy crt
-  - name: Copy crt
-    become: yes
-    ansible.posix.synchronize: TODO
-      src: /etc/docker/certs.d/registry.org:5000/cert.crt
-      #src: /home/kube/.registry/certs/cert.crt
-      #dest: /home/kube/cert.crt
-      dest: /etc/containerd/certs.d/registry.org:5000/
-      rsync_path: sudo rsync
-    delegate_to: node0
 
   # Set sandbox repo
   - name: Check containerd sandbox repo

@@ -68,7 +68,6 @@
     loop: "{{ query('inventory_hostnames', 'nodes:!node0') }}"
     register: keys
     failed_when: keys.rc == 255
-  # Add key when it doesn't exist in known_hosts
   - ansible.builtin.shell: ssh-keyscan -H -t ecdsa "{{ hostvars[item['item']]['ansible_host'] }}" >> ~/.ssh/known_hosts
     when: item.rc == 1
     loop: "{{ keys.results }}"
