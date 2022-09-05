@@ -109,7 +109,7 @@
     ansible.builtin.copy:
       remote_src: yes
       src: "{{ ansible_env.HOME }}/cert.crt"
-      dest: /etc/containerd/certs.d/registry.org:5000/cert.crt
+      dest: /etc/containerd/certs.d/registry.org:5000/
    
   # Remove temp crt
   - name: Remove temporary crt

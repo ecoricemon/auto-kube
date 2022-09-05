@@ -3,6 +3,8 @@
 - hosts: nodes
   gather_facts: no
   tasks:
+  - ansible.builtin.package_facts:
+      manager: auto
   - ansible.builtin.debug:
       msg: "kubelet is already installed. Next step will be skipped"
     when: "'kubelet' in ansible_facts.packages"
