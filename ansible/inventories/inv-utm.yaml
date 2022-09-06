@@ -16,7 +16,6 @@ nodes:
       ansible_host: 192.168.128.12
   vars:
     ansible_user: kube
-    ansible_ssh_extra_args: "-o ForwardAgent=yes"
 
 all:
   children:
