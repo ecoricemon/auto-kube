@@ -1,0 +1,15 @@
+---
+base:
+  kube:
+    ver: 1.24.4
+
+kubelet:
+  apt_ver: "{{ base['kube']['ver'] }}-00"
+
+kubeadm:
+  apt_ver: "{{ base['kube']['ver'] }}-00"
+  cmd_ver: "v{{ base['kube']['ver'] }}"
+
+kubectl:
+  apt_ver: "{{ base['kube']['ver'] }}-00"
+  

@@ -9,15 +9,18 @@
       kubeadm reset \
         --force \
         --cri-socket "unix:///run/containerd/containerd.sock"
+
   - name: Delete /etc/cni/net.d/*
     become: yes
     ansible.builtin.file:
       path: /etc/cni/net.d
       state: absent
+
   - become: yes
     ansible.builtin.file:
       path: /etc/cni/net.d
       state: directory
+
 - hosts: node0
   gather_facts: no
   tasks:

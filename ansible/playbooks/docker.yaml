@@ -5,9 +5,11 @@
   tasks:
   - ansible.builtin.package_facts:
       manager: auto
+
   - ansible.builtin.debug:
       msg: "containerd.io is already installed. Next step will be skipped"
     when: "'containerd.io' in ansible_facts.packages"
+
   - name: Install docker prerequisites
     become: yes
     ansible.builtin.apt:
@@ -18,12 +20,14 @@
       - gnupg
       - lsb-release
     when: "'containerd.io' not in ansible_facts.packages"
+
   - name: Add apt repository
     become: yes
     ansible.builtin.shell: |
       curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
       echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
     when: "'containerd.io' not in ansible_facts.packages"
+
   - name: Install container runtime
     become: yes
     ansible.builtin.apt:
@@ -31,14 +35,17 @@
       pkg:
       - containerd.io
     when: "'containerd.io' not in ansible_facts.packages"
+
   - name: Create /etc/containerd
     become: yes
     ansible.builtin.file:
       path: /etc/containerd
       state: directory
+
   - name: Set /etc/containerd/config.toml
     become: yes
     ansible.builtin.shell: containerd config default | tee /etc/containerd/config.toml
+
   - name: Restart containerd
     become: yes
     ansible.builtin.shell: systemctl restart containerd
@@ -49,6 +56,7 @@
   tasks:
   - ansible.builtin.package_facts:
       manager: auto
+
   - name: Install docker engine
     become: yes
     ansible.builtin.apt:
@@ -56,17 +64,20 @@
       - docker-ce
       - docker-ce-cli
     when: "'docker-ce' not in ansible_facts.packages"
+
   - name: Add docker group
     become: yes
     ansible.builtin.group:
       name: docker
       state: present
+
   - name: Add user into the docker group
     become: yes
     ansible.builtin.user:
       name: "{{ ansible_user }}"
       append: yes
       groups: docker
+
   - name: Install docker-compose
     become: yes
     ansible.builtin.apt:

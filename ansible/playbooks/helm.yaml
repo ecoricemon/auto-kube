@@ -4,15 +4,18 @@
   tasks:
   - ansible.builtin.package_facts:
       manager: auto
+
   - ansible.builtin.debug:
       msg: "helm is already installed. Next step will be skipped"
     when: "'helm' in ansible_facts.packages"
+
   - name: Add apt repository
     become: yes
     ansible.builtin.shell: |
       curl https://baltocdn.com/helm/signing.asc | gpg --dearmor | tee /usr/share/keyrings/helm.gpg > /dev/null
       echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/helm.gpg] https://baltocdn.com/helm/stable/debian/ all main" | tee /etc/apt/sources.list.d/helm-stable-debian.list > /dev/null
     when: "'helm' not in ansible_facts.packages"
+
   - name: Install helm
     become: yes
     ansible.builtin.apt:
