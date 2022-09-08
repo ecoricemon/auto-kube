@@ -2,22 +2,26 @@
 # Pull kube images ans push it to private registry
 - hosts: node0
   gather_facts: no
+  vars_files:
+  - vars.yaml
+  vars:
+  - dir: "{{ kubeadm['temp_dir'] }}"
   tasks:
   - name: Get kube image
     ansible.builtin.shell: |
-      cat /etc/containerd/config.toml | grep sandbox_image | sed "s/.*= //" | sed 's/"//g' > ~/srcimages
-      echo registry.org:5000/$(cat ~/srcimages) > ~/destimages
+      cat /etc/containerd/config.toml | grep sandbox_image | sed "s/.*= //" | sed 's/"//g' > "{{ dir }}/src-images"
+      echo "{{ registry['url'] }}"/$(cat "{{ dir }}/src-images") > "{{ dir }}/dest-images"
       srcrepo=$(kubeadm config print init-defaults | grep imageRepository | sed "s/^imageRepository: //")
-      kubeadm config images list --kubernetes-version "v1.24.4" >> srcimages
-      kubeadm config images list --kubernetes-version "v1.24.4" --image-repository "registry.org:5000/$srcrepo" >> destimages
-      linenum=$(wc -l srcimages | cut -d ' ' -f 1)
+      kubeadm config images list --kubernetes-version "{{ kubeadm['cmd_ver'] }}" >> "{{ dir }}/src-images"
+      kubeadm config images list --kubernetes-version "{{ kubeadm['cmd_ver'] }}" --image-repository "{{ registry['url'] }}/$srcrepo" >> "{{ dir }}/dest-images"
+      linenum=$(wc -l "{{ dir }}/src-images" | cut -d ' ' -f 1)
       i=1
       while [ $i -le $linenum ]; do
-        src=$(sed "$i!d;q" srcimages)
-        dest=$(sed "$i!d;q" destimages)
-        repo=$(echo $dest | sed 's/registry.org:5000\///' | cut -d ':' -f 1)
-        tag=$(echo $dest | sed 's/registry.org:5000\///' | cut -d ':' -f 2)
-        existtags=$(curl -s --insecure https://registry.org:5000/v2/$repo/tags/list)
+        src=$(sed "$i!d;q" "{{ dir }}/src-images")
+        dest=$(sed "$i!d;q" "{{ dir }}/dest-images")
+        repo=$(echo $dest | sed "s/{{ registry['url'] }}\///" | cut -d ':' -f 1)
+        tag=$(echo $dest | sed "s/{{ registry['url'] }}\///" | cut -d ':' -f 2)
+        existtags=$(curl -ks "https://{{ registry['url'] }}/v2/$repo/tags/list")
         if [ -z $(echo $existtags | grep $tag) ]; then
           docker image pull $src
           docker image tag $src $dest
@@ -25,5 +29,4 @@
         fi
         i=$((i+1))
       done
-      rm srcimages destimages
 

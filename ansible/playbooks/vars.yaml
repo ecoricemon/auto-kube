@@ -1,7 +1,11 @@
 ---
 base:
+  dir: "/home/{{ ansible_user }}/.kube-ansible"
   kube:
     ver: 1.24.4
+  reg:
+    domain: registry.org
+    port: 5000
 
 kubelet:
   apt_ver: "{{ base['kube']['ver'] }}-00"
@@ -9,7 +13,13 @@ kubelet:
 kubeadm:
   apt_ver: "{{ base['kube']['ver'] }}-00"
   cmd_ver: "v{{ base['kube']['ver'] }}"
+  temp_dir: "{{ base['dir'] }}/kubeadm"
 
 kubectl:
   apt_ver: "{{ base['kube']['ver'] }}-00"
-  
+ 
+registry:
+  domain: "{{ base['reg']['domain'] }}"
+  port: "{{ base['reg']['port'] }}"
+  url: "{{ base['reg']['domain'] }}:{{ base['reg']['port'] }}" 
+

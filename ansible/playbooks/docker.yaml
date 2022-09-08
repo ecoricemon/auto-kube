@@ -6,10 +6,6 @@
   - ansible.builtin.package_facts:
       manager: auto
 
-  - ansible.builtin.debug:
-      msg: "containerd.io is already installed. Next step will be skipped"
-    when: "'containerd.io' in ansible_facts.packages"
-
   - name: Install docker prerequisites
     become: yes
     ansible.builtin.apt:

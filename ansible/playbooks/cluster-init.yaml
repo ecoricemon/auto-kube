@@ -7,7 +7,14 @@
   gather_facts: yes
   vars_files:
   - vars.yaml
+  vars:
+  - dir: "{{ kubeadm['temp_dir'] }}"
   tasks:
+  - name: Make temp dir
+    ansible.builtin.file:
+      path: "{{ kubeadm['temp_dir'] }}"
+      state: directory
+
   - name: Make cluster
     become: yes
     ansible.builtin.shell: >
@@ -15,20 +22,14 @@
         --cri-socket "unix:///run/containerd/containerd.sock" \
         --pod-network-cidr "10.244.0.0/16" \
         --apiserver-advertise-address "{{ hostvars['node0']['ansible_host'] }}" \
-        --image-repository "registry.org:5000/k8s.gcr.io" \
+        --image-repository "{{ registry['url'] }}/k8s.gcr.io" \
         --kubernetes-version "{{ kubeadm['cmd_ver'] }}"
     register: init
 
   - name: Keep join command
-    ansible.builtin.shell: echo "{{ init.stdout }}" > ~/.init.tmp
+    ansible.builtin.shell: echo "{{ init.stdout }}" > "{{ dir }}/init"
 
-  - ansible.builtin.shell: |
-      cat ~/.init.tmp | gawk "NR>=$(cat ~/.init.tmp | grep -n 'kubeadm join' | cut -d ':' -f 1)" > ~/.joincmd.tmp
-
-  - name: Remove temporary file
-    ansible.builtin.file:
-      path: ~/.init.tmp
-      state: absent
+  - ansible.builtin.shell: cat "{{ dir }}/init" | gawk "NR>=$(cat {{ dir }}/init | grep -n 'kubeadm join' | cut -d ':' -f 1)" > "{{ dir }}/join-cmd"
 
   - name: Copy kube user config
     ansible.builtin.file:
@@ -50,28 +51,23 @@
 # Join the cluster
 - hosts: nodes:!node0
   gather_facts: yes
+  vars_files:
+  - vars.yaml
+  vars:
+  - dir: "{{ kubeadm['temp_dir'] }}"
   tasks:
+  - name: Make temp dir
+    ansible.builtin.file:
+      path: "{{ kubeadm['temp_dir'] }}"
+      state: directory
+
   - name: Copy join cmd
     ansible.posix.synchronize:
-      src: "{{ ansible_env.HOME }}/.joincmd.tmp"
-      dest: ~/.joincmd.tmp
+      src: "{{ dir }}/join-cmd"
+      dest: "{{ dir }}/join-cmd"
     delegate_to: node0
 
   - name: Join the cluster
     become: yes
-    ansible.builtin.shell: sh "{{ ansible_env.HOME }}/.joincmd.tmp"
+    ansible.builtin.shell: sh "{{ dir }}/join-cmd"
 
-  - name: Remove temporary file
-    ansible.builtin.file:
-      path: ~/.joincmd.tmp
-      state: absent
-
-# Remove temporary file
-- hosts: node0
-  gather_facts: no
-  tasks:
-  - name: Remove temporary file
-    ansible.builtin.file:
-      path: ~/.joincmd.tmp
-      state: absent
- 

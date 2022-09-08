@@ -9,10 +9,6 @@
       patterns: 'id_rsa,id_rsa.pub'
     register: sshfiles
 
-  - ansible.builtin.debug:
-      msg: "There are ssh key files. Next step will be skipped"
-    when: sshfiles.matched == 2
-
   - name: Create ssh key
     ansible.builtin.shell: ssh-keygen -t rsa -f ~/.ssh/id_rsa -N ''
     when: sshfiles.matched != 2
@@ -36,10 +32,6 @@
     ansible.builtin.shell: cat ~/.ssh/authorized_keys | grep "$(cat ~/.ssh/id_rsa.pub.tmp)"
     register: grep_key
     failed_when: grep_key.rc == 2
-
-  - ansible.builtin.debug:
-      msg: "There's no need to add ssh key"
-    when: grep_key.rc == 0
 
   - name: Append ssh key to authorized_keys
     ansible.builtin.shell: cat ~/.ssh/id_rsa.pub.tmp >> ~/.ssh/authorized_keys
@@ -70,7 +62,7 @@
   - ansible.builtin.file:
       path: ~/.ssh/known_hosts
       state: touch
-    when: not known.stat.exists
+    when: not known['stat']['exists']
 
   - name: Check key in the known_hosts
     ansible.builtin.shell: ssh-keygen -F "{{ hostvars[item]['ansible_host'] }}" 2>/dev/null

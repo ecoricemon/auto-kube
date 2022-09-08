@@ -5,10 +5,6 @@
   - ansible.builtin.package_facts:
       manager: auto
 
-  - ansible.builtin.debug:
-      msg: "helm is already installed. Next step will be skipped"
-    when: "'helm' in ansible_facts.packages"
-
   - name: Add apt repository
     become: yes
     ansible.builtin.shell: |

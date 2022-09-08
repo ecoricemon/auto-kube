@@ -2,19 +2,17 @@
 # Run private registry
 - hosts: node0
   gather_facts: yes
+  vars_files:
+  - vars.yaml
   tasks:
   - name: Check registry image
     ansible.builtin.shell: docker image ls | grep registry
     register: ls_registry
-    failed_when: ls_registry.rc == 2
-
-  - ansible.builtin.debug:
-      msg: "There is the registry image. Next step will be skipped"
-    when: ls_registry.stdout.find("registry") != -1
+    failed_when: ls_registry['rc'] == 2
 
   - name: Pull registry image
     ansible.builtin.shell: docker image pull registry
-    when: ls_registry.stdout.find("registry") == -1
+    when: ls_registry['stdout'].find("registry") == -1
   
   - name: Create .registry directories
     ansible.builtin.file:
@@ -31,17 +29,13 @@
       patterns: 'cert.key,cert.crt'
     register: certfiles
 
-  - ansible.builtin.debug:
-      msg: "There are cert files. Next step will be skipped"
-    when: certfiles.matched == 2
-
   - name: Create cert.key
     ansible.builtin.shell: openssl genrsa -out ~/.registry/certs/cert.key 2048
-    when: certfiles.matched != 2
+    when: certfiles['matched'] != 2
 
   - name: Create cert.csr
-    ansible.builtin.shell: openssl req -new -key ~/.registry/certs/cert.key -out ~/.registry/certs/cert.csr -subj "/C=KR/O=Organization/CN=registry.org"
-    when: certfiles.matched != 2
+    ansible.builtin.shell: openssl req -new -key ~/.registry/certs/cert.key -out ~/.registry/certs/cert.csr -subj "/C=KR/O=Organization/CN={{ registry['domain'] }}"
+    when: certfiles['matched'] != 2
 
   - name: Create cert.ext
     ansible.builtin.blockinfile:
@@ -51,7 +45,7 @@
         [default]
         subjectAltName = \
           IP:{{ hostvars['node0']['ansible_host'] }}, \
-          DNS:registry.org
+          DNS:{{ registry['domain']
     when: certfiles.matched != 2
 
   - name: Create cert.crt
@@ -68,7 +62,7 @@
           restart: always
           image: registry
           ports:
-          - 5000:5000
+          - {{ registry['port'] }}:5000
           environment:
             REGISTRY_STORAGE_DELETE_ENABLED: "true"
             REGISTRY_HTTP_TLS_CERTIFICATE: /certs/cert.crt
@@ -86,7 +80,7 @@
     ansible.builtin.copy:
       remote_src: yes
       src: "{{ ansible_env.HOME }}/.registry/certs/cert.crt"
-      dest: /etc/docker/certs.d/registry.org:5000/
+      dest: "/etc/docker/certs.d/{{ registry['url'] }}/"
 
   - name: Run registry
     ansible.builtin.shell: docker-compose -f ~/.registry/docker-compose.yaml up -d
@@ -94,20 +88,22 @@
 # Copy crt into containerd path
 - hosts: nodes
   gather_facts: yes
+  vars_files:
+  - vars.yaml
   tasks:
 
   - name: Copy temporary crt
     ansible.posix.synchronize:
-      src: /etc/docker/certs.d/registry.org:5000/cert.crt
+      src: "/etc/docker/certs.d/{{ registry['url'] }}/cert.crt"
       dest: "{{ ansible_env.HOME }}/cert.crt"
     delegate_to: node0
 
-  - name: Copy crt to /etc/containerd/certs.d/registry.org:5000/
+  - name: "Copy crt to /etc/containerd/certs.d/{{ registry['url'] }}/"
     become: yes
     ansible.builtin.copy:
       remote_src: yes
       src: "{{ ansible_env.HOME }}/cert.crt"
-      dest: /etc/containerd/certs.d/registry.org:5000/
+      dest: "/etc/containerd/certs.d/{{ registry['url'] }}/"
    
   - name: Remove temporary crt
     ansible.builtin.file:
@@ -117,6 +113,8 @@
 # Set containerd
 - hosts: nodes
   gather_facts: no
+  vars_files:
+  - vars.yaml
   tasks:
 
   - name: Append registry in /etc/hosts
@@ -124,48 +122,38 @@
     ansible.builtin.blockinfile:
       path: /etc/hosts
       block: |
-        {{ hostvars['node0']['ansible_host'] }} registry.org
+        {{ hostvars['node0']['ansible_host'] }} {{ registry['domain'] }}
 
   - name: Check containerd sandbox repo
-    ansible.builtin.shell: cat /etc/containerd/config.toml | grep 'sandbox_image = "registry.org:5000/'
+    ansible.builtin.shell: cat /etc/containerd/config.toml | grep "sandbox_image = \"{{ registry['url'] }}/"
     register: grep_sandbox
-    failed_when: grep_sandbox.rc == 2
-
-  - ansible.builtin.debug:
-      msg: "There's no need to set containerd sandbox image"
-    when: grep_sandbox.rc == 0
+    failed_when: grep_sandbox['rc'] == 2
 
   - name: Set containerd sandbox repo
     become: yes 
-    ansible.builtin.shell: >
-      sed -i 's/sandbox_image = "/sandbox_image = "registry.org:5000\//' /etc/containerd/config.toml
-    when: grep_sandbox.rc == 1
+    ansible.builtin.shell: sed -i "s/sandbox_image = \"/sandbox_image = \"{{ registry['url'] }}\//" /etc/containerd/config.toml
+    when: grep_sandbox['rc'] == 1
 
   - name: Check containerd config path
     ansible.builtin.shell: cat /etc/containerd/config.toml | grep 'config_path = "/etc/containerd/certs.d'
     register: grep_config
-    failed_when: grep_config.rc == 2
-
-  - ansible.builtin.debug:
-      msg: "There's no need to set containerd config path"
-    when: grep_config.rc == 0
+    failed_when: grep_config['rc'] == 2
 
   - name: Set config path in containerd config.toml
     become: yes
-    ansible.builtin.shell: >
-      sed -i 's/config_path = "/config_path = "\/etc\/containerd\/certs.d/' /etc/containerd/config.toml
-    when: grep_config.rc == 1
+    ansible.builtin.shell: sed -i 's/config_path = "/config_path = "\/etc\/containerd\/certs.d/' /etc/containerd/config.toml
+    when: grep_config['rc'] == 1
 
-  - name: Create /etc/containerd/certs.d/registry.org:5000/hosts.toml
+  - name: "Create /etc/containerd/certs.d/{{ registry['url'] }}/hosts.toml"
     become: yes
     ansible.builtin.blockinfile:
-      path: /etc/containerd/certs.d/registry.org:5000/hosts.toml
+      path: "/etc/containerd/certs.d/{{ registry['url'] }}/hosts.toml"
       create: yes
       block: |
-        server = "https://registry.org:5000"
+        server = "https://{{ registry['url'] }}"
 
-        [host."https://registry.org:5000"]
-          ca = "/etc/containerd/certs.d/registry.org:5000/cert.crt"
+        [host."https://{{ registry['url'] }}"]
+          ca = "/etc/containerd/certs.d/{{ registry['url'] }}/cert.crt"
 
   - name: Restart containerd
     become: yes
