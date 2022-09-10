@@ -45,7 +45,7 @@
         [default]
         subjectAltName = \
           IP:{{ hostvars['node0']['ansible_host'] }}, \
-          DNS:{{ registry['domain']
+          DNS:{{ registry['domain'] }}
     when: certfiles.matched != 2
 
   - name: Create cert.crt

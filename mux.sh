@@ -15,7 +15,6 @@ alias myssh=$SSH
 if [ $# -eq 0 ]; then
     tmux new -s kube -n vm0 "$SSH $GUEST_0" \; \
 	neww -n vm1 "$SSH $GUEST_1" \; \
-	neww -n vm2 "$SSH $GUEST_2" \; \
 	neww -n vmext "$SSH $GUEST_E" \; \
 	neww -n host
 elif [ $# -eq 1 ]; then
