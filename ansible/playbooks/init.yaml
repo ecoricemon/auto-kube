@@ -17,6 +17,6 @@
 # Run private registry
 - import_playbook: registry.yaml
 
-# Get kube image
-- import_playbook: kube-image.yaml
+# Set containerd
+- import_playbook: containerd.yaml
 

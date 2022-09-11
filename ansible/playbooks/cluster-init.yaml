@@ -1,8 +1,5 @@
 ---
-# Clean first
-- import_playbook: cluster-reset.yaml
-
-# Make cluter
+# Initialize cluster
 - hosts: node0
   gather_facts: yes
   vars_files:

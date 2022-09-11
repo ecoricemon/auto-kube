@@ -1,0 +1,36 @@
+---
+- hosts: node0
+  gather_facts: yes
+  vars_files:
+  - vars.yaml
+  vars:
+  - dir: "{{ cilium['temp_dir'] }}/cli"
+  tasks:
+  - name: Check cilium
+    ansible.builtin.shell: cilium
+    register: cmd_cilium
+    failed_when:
+    - cmd_cilium['rc'] != 0
+    - cmd_cilium['rc'] != 127
+
+  - name: Make temp dir
+    ansible.builtin.file:
+      path: "{{ dir }}"
+      state: directory
+    when: cmd_cilium['rc'] != 0
+
+  - name: Get file name to be downloaded
+    ansible.builtin.set_fact:
+      archive: "{{ 'cilium-linux-amd64.tar.gz' if ansible_facts.architecture is match('x86_64') else 'cilium-linux-arm64.tar.gz' }}"
+    when: cmd_cilium['rc'] != 0
+
+  - name: Download cilium-cli
+    ansible.builtin.shell: curl -L --fail "https://github.com/cilium/cilium-cli/releases/download/{{ cilium['cli_ver'] }}/{{ archive }}" -o "{{ dir }}/{{ archive }}"
+    when: cmd_cilium['rc'] != 0
+
+  - name: Extract cilium-cli
+    become: yes
+    ansible.builtin.shell:
+      tar xzfC "{{ dir }}/{{ archive }}" /usr/local/bin
+    when: cmd_cilium['rc'] != 0
+

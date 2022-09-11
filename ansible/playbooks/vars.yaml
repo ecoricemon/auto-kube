@@ -7,13 +7,16 @@ base:
     domain: registry.org
     port: 5000
 
+containerd:
+  temp_dir: "{{ base['dir'] }}/containerd"
+
 kubelet:
   apt_ver: "{{ base['kube']['ver'] }}-00"
 
 kubeadm:
+  temp_dir: "{{ base['dir'] }}/kubeadm"
   apt_ver: "{{ base['kube']['ver'] }}-00"
   cmd_ver: "v{{ base['kube']['ver'] }}"
-  temp_dir: "{{ base['dir'] }}/kubeadm"
 
 kubectl:
   apt_ver: "{{ base['kube']['ver'] }}-00"
@@ -23,3 +26,8 @@ registry:
   port: "{{ base['reg']['port'] }}"
   url: "{{ base['reg']['domain'] }}:{{ base['reg']['port'] }}" 
 
+cilium:
+  temp_dir: "{{ base['dir'] }}/cilium"
+  cli_ver: v0.12.3
+  img_ver: 1.12.1
+  

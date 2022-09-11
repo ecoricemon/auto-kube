@@ -1,0 +1,19 @@
+---
+# Get kube image
+- import_playbook: kube-image.yaml
+
+# Clean first
+- import_playbook: cluster-reset.yaml
+
+# Initialize cluter
+- import_playbook: cluster-init.yaml
+
+# Install helm
+- import_playbook: helm.yaml
+
+# Install cilium
+- import_playbook: cilium.yaml
+
+# Install cilium CLI
+- import_playbook: cilium-cli.yaml
+

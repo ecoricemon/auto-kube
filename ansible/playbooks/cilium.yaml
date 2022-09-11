@@ -1,0 +1,59 @@
+---
+- hosts: node0
+  gather_facts: no
+  vars_files:
+  - vars.yaml
+  vars:
+  - dir: "{{ cilium['temp_dir'] }}/chart"
+  tasks:
+  - name: Clean
+    ansible.builtin.file:
+      path: "{{ dir }}"
+      state: absent
+
+  - name: Get chart
+    ansible.builtin.shell: helm pull cilium --repo https://helm.cilium.io --version "{{ cilium['img_ver'] }}" --untar --untardir "{{ dir }}"
+
+  - name: Collect repo string
+    ansible.builtin.shell: |
+      cat "{{ dir }}/cilium/values.yaml" | grep repository: | cut -d ':' -f 2 | sed "s/\"//g" | sed "s/ //g" > "{{ dir }}/repos"
+      cat "{{ dir }}/cilium/values.yaml" | grep tag: | cut -d ':' -f 2 | cut -d '@' -f 1 | sed "s/\"//g" | sed "s/ //g" > "{{ dir }}/tags"
+
+  - name: Pull image
+    ansible.builtin.shell: |
+      linenum=$(wc -l "{{ dir }}/repos" | cut -d ' ' -f 1)
+      i=1
+      while [ $i -le $linenum ]; do
+        repo=$(sed "$i!d;q" "{{ dir }}/repos")
+        tag=$(sed "$i!d;q" "{{ dir }}/tags")
+        existtags=$(curl -ks "https://{{ registry['url'] }}/v2/$repo/tags/list")
+        if [ -z $(echo $existtags | grep $tag) ]; then
+          docker image pull $repo:$tag
+          docker image tag $repo:$tag "{{ registry['url'] }}/$repo:$tag"
+          docker image push "{{ registry['url'] }}/$repo:$tag"
+        fi
+        i=$((i+1))
+      done
+
+  - name: Change repository
+    ansible.builtin.shell: |
+      sed -i "s/repository: \"/repository: \"{{ registry['url'] }}\//" "{{ dir }}/cilium/values.yaml"
+      sed -i "s/useDigest: true/useDigest: false/" "{{ dir }}/cilium/values.yaml"
+
+  - name: Check release
+    ansible.builtin.shell: helm list -n kube-system | grep cilium
+    register: grep_cilium
+    failed_when: grep_cilium.rc == 2
+
+  - name: Install cilium
+    ansible.builtin.shell: helm install cilium "{{ dir }}/cilium" -n kube-system
+    when: grep_cilium['stdout'].find("cilium") == -1
+
+- hosts: nodes
+  gather_facts: no
+  tasks:
+  - name: Restart containerd
+    become: yes
+    ansible.builtin.shell: systemctl restart containerd
+    when: hostvars['node0']['grep_cilium']['stdout'].find("cilium") == -1
+
