@@ -10,10 +10,6 @@ nodes:
       ansible_host: 10.0.3.11
       ansible_user: kube
       ansible_ssh_common_args: "-J kube@localhost:8022"
-    node2:
-      ansible_host: 10.0.3.12
-      ansible_user: kube
-      ansible_ssh_common_args: "-J kube@localhost:8022"
 
 all:
   children:

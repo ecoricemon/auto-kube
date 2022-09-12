@@ -12,6 +12,11 @@
       echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/helm.gpg] https://baltocdn.com/helm/stable/debian/ all main" | tee /etc/apt/sources.list.d/helm-stable-debian.list > /dev/null
     when: "'helm' not in ansible_facts.packages"
 
+  - name: Update apt cache using command
+    become: yes
+    ansible.builtin.shell: apt update
+    when: "'helm' not in ansible_facts.packages"
+
   - name: Install helm
     become: yes
     ansible.builtin.apt:

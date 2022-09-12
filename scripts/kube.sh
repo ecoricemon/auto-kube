@@ -20,14 +20,11 @@ get_vm_info() {
 	if [ $1 = "ext" ]; then
 		VM_NAME="ubuntu server ext"
 	elif [ $1 = "0" ]; then
-		VM_NAME="ubuntu server 0"
+		VM_NAME="vm0"
 		VM_IP=10.0.3.10
 	elif [ $1 = "1" ]; then
-		VM_NAME="ubuntu server 1"
+		VM_NAME="vm1"
 		VM_IP=10.0.3.11
-	elif [ $1 = "2" ]; then
-		VM_NAME="ubuntu server 2"
-		VM_IP=10.0.3.12
 	fi
 }
 
@@ -55,7 +52,7 @@ shutdown_vm() {
 }
 
 if [ $1 = "run" ]; then
-	for vm in "ext" "0" "1" "2"
+	for vm in "ext" "0" "1"
 	do
 		if [ $2 = "all" ] || [ $2 = $vm ]; then
 			run_vm $vm
@@ -64,7 +61,7 @@ if [ $1 = "run" ]; then
 elif [ $1 = "ssh" ]; then
 	ssh_vm $2
 elif [ $1 = "shutdown" ]; then
-	for vm in "0" "1" "2" "ext"
+	for vm in "0" "1" "ext"
 	do
 		if [ $2 = "all" ] || [ $2 = $vm ]; then
 			shutdown_vm $vm

@@ -25,6 +25,11 @@
       echo "deb [signed-by=/usr/share/keyrings/kubernetes-archive-keyring.gpg] https://apt.kubernetes.io/ kubernetes-xenial main" | tee /etc/apt/sources.list.d/kubernetes.list > /dev/null
     when: "'kubelet' not in ansible_facts.packages"
 
+  - name: Update apt cache using command
+    become: yes
+    ansible.builtin.shell: apt update
+    when: "'kubelet' not in ansible_facts.packages"
+
   - name: Install kube
     become: yes
     ansible.builtin.apt:
