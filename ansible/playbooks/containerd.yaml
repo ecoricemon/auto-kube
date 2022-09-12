@@ -38,23 +38,18 @@
 
   - name: Get containerd sandbox image
     ansible.builtin.shell: |
-      containerd config default | grep sandbox_image | sed "s/.*= //" | sed 's/"//g' > "{{ dir }}/src-images"
-      echo "{{ registry['url'] }}"/$(cat "{{ dir }}/src-images") > "{{ dir }}/dest-images"
-      linenum=$(wc -l "{{ dir }}/src-images" | cut -d ' ' -f 1)
-      i=1
-      while [ $i -le $linenum ]; do
-        src=$(sed "$i!d;q" "{{ dir }}/src-images")
-        dest=$(sed "$i!d;q" "{{ dir }}/dest-images")
-        repo=$(echo $dest | sed "s/{{ registry['url'] }}\///" | cut -d ':' -f 1)
-        tag=$(echo $dest | sed "s/{{ registry['url'] }}\///" | cut -d ':' -f 2)
-        existtags=$(curl -ks "https://{{ registry['url'] }}/v2/$repo/tags/list")
-        if [ -z $(echo $existtags | grep $tag) ]; then
-          docker image pull $src 
-          docker image tag $src $dest 
-          docker image push $dest
-        fi    
-        i=$((i+1))
-      done  
+      containerd config default | grep sandbox_image | sed "s/.*= //" | sed 's/"//g' > "{{ dir }}/src-image"
+      echo "{{ registry['url'] }}"/$(cat "{{ dir }}/src-image") > "{{ dir }}/dest-image"
+      src=$(cat "{{ dir }}/src-image")
+      dest=$(cat "{{ dir }}/dest-image")
+      repo=$(echo $dest | sed "s/{{ registry['url'] }}\///" | cut -d ':' -f 1)
+      tag=$(echo $dest | sed "s/{{ registry['url'] }}\///" | cut -d ':' -f 2)
+      existtags=$(curl -ks "https://{{ registry['url'] }}/v2/$repo/tags/list")
+      if [ -z $(echo $existtags | grep $tag) ]; then
+        docker image pull $src 
+        docker image tag $src $dest 
+        docker image push $dest
+      fi    
 
 # Set containerd
 - hosts: nodes

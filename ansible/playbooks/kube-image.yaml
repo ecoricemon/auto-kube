@@ -7,6 +7,11 @@
   vars:
   - dir: "{{ kubeadm['temp_dir'] }}"
   tasks:
+  - name: Make temp dir
+    ansible.builtin.file:
+      path: "{{ dir }}"
+      state: directory
+
   - name: Get kube image
     ansible.builtin.shell: |
       srcrepo=$(kubeadm config print init-defaults | grep imageRepository | sed "s/^imageRepository: //")

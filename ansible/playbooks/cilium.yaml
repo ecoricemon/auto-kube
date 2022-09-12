@@ -6,44 +6,52 @@
   vars:
   - dir: "{{ cilium['temp_dir'] }}/chart"
   tasks:
+  - name: Check release
+    ansible.builtin.shell: helm list -n kube-system | grep cilium
+    register: grep_cilium
+    failed_when: grep_cilium.rc == 2
+
   - name: Clean
     ansible.builtin.file:
       path: "{{ dir }}"
       state: absent
+    when: grep_cilium['stdout'].find("cilium") == -1
 
   - name: Get chart
-    ansible.builtin.shell: helm pull cilium --repo https://helm.cilium.io --version "{{ cilium['img_ver'] }}" --untar --untardir "{{ dir }}"
+    ansible.builtin.shell: helm pull cilium --repo https://helm.cilium.io --version {{ cilium['img_ver'] }} --untar --untardir {{ dir }}
+    when: grep_cilium['stdout'].find("cilium") == -1
 
-  - name: Collect repo string
+  - name: Collect image name
     ansible.builtin.shell: |
-      cat "{{ dir }}/cilium/values.yaml" | grep repository: | cut -d ':' -f 2 | sed "s/\"//g" | sed "s/ //g" > "{{ dir }}/repos"
-      cat "{{ dir }}/cilium/values.yaml" | grep tag: | cut -d ':' -f 2 | cut -d '@' -f 1 | sed "s/\"//g" | sed "s/ //g" > "{{ dir }}/tags"
+      helm template cilium {{ dir }}/cilium > {{ dir }}/rendered.yaml
+      cat {{ dir }}/rendered.yaml | grep -e "^[ \t]*image:" | sed "s/[ \t]*image: \"*//" | cut -d '@' -f 1 > {{ dir }}/src-images
+    when: grep_cilium['stdout'].find("cilium") == -1
 
   - name: Pull image
     ansible.builtin.shell: |
-      linenum=$(wc -l "{{ dir }}/repos" | cut -d ' ' -f 1)
+      linenum=$(wc -l {{ dir }}/src-images | cut -d ' ' -f 1)
       i=1
       while [ $i -le $linenum ]; do
-        repo=$(sed "$i!d;q" "{{ dir }}/repos")
-        tag=$(sed "$i!d;q" "{{ dir }}/tags")
+        src=$(sed "$i!d;q" {{ dir }}/src-images)
+        dest={{ registry['url'] }}/$src
+        echo $dest >> {{ dir }}/dest-images
+        repo=$(echo $dest | sed "s/{{ registry['url'] }}\///" | cut -d ':' -f 1)
+        tag=$(echo $dest | sed "s/{{ registry['url'] }}\///" | cut -d ':' -f 2)
         existtags=$(curl -ks "https://{{ registry['url'] }}/v2/$repo/tags/list")
         if [ -z $(echo $existtags | grep $tag) ]; then
-          docker image pull $repo:$tag
-          docker image tag $repo:$tag "{{ registry['url'] }}/$repo:$tag"
-          docker image push "{{ registry['url'] }}/$repo:$tag"
+          docker image pull $src
+          docker image tag $src $dest
+          docker image push $dest
         fi
         i=$((i+1))
       done
+    when: grep_cilium['stdout'].find("cilium") == -1
 
   - name: Change repository
     ansible.builtin.shell: |
       sed -i "s/repository: \"/repository: \"{{ registry['url'] }}\//" "{{ dir }}/cilium/values.yaml"
       sed -i "s/useDigest: true/useDigest: false/" "{{ dir }}/cilium/values.yaml"
-
-  - name: Check release
-    ansible.builtin.shell: helm list -n kube-system | grep cilium
-    register: grep_cilium
-    failed_when: grep_cilium.rc == 2
+    when: grep_cilium['stdout'].find("cilium") == -1
 
   - name: Install cilium
     ansible.builtin.shell: helm install cilium "{{ dir }}/cilium" -n kube-system
