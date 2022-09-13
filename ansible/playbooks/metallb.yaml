@@ -1,0 +1,47 @@
+---
+- hosts: node0
+  gather_facts: no
+  vars_files:
+  - vars.yaml
+  vars:
+  - dir: "{{ metallb['temp_dir'] }}"
+  tasks:
+  - name: Clean
+    ansible.builtin.file:
+      path: "{{ dir }}"
+      state: absent
+
+  - name: Make temp dir
+    ansible.builtin.file:
+      path: "{{ dir }}"
+      state: directory
+
+  - name: Get manifest and collect image
+    ansible.builtin.shell: |
+      curl https://raw.githubusercontent.com/metallb/metallb/{{ metallb['ver'] }}/config/manifests/metallb-native.yaml -o {{ dir }}/metallb-native.yaml
+      cat {{ dir }}/metallb-native.yaml | grep image: | sed "s/image: //" | sed "s/ //g" > {{ dir }}/images
+
+  - name: Pull image
+    ansible.builtin.shell: |
+      linenum=$(wc -l {{ dir }}/images | cut -d ' ' -f 1)
+      i=1
+      while [ $i -le $linenum ]; do
+        image=$(sed "$i!d;q" {{ dir }}/images)
+        repo=$(echo $image | cut -d ':' -f 1)
+        tag=$(echo $image | cut -d ':' -f 2)
+        existtags=$(curl -ks https://{{ registry['url'] }}/v2/$repo/tags/list)
+        if [ -z $(echo $existtags | grep $tag) ]; then
+          docker image pull $image
+          docker image tag $image {{ registry['url'] }}/$image
+          docker image push {{ registry['url'] }}/$image
+        fi
+        i=$((i+1))
+      done
+
+  - name: Change repository
+    ansible.builtin.shell: |
+      sed -i "s/image: /image: {{ registry['url'] }}\//" {{ dir }}/metallb-native.yaml
+
+  - name: Apply metallb
+    ansible.builtin.shell: kubectl apply -f {{ dir }}/metallb-native.yaml
+

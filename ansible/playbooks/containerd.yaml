@@ -57,13 +57,6 @@
   vars_files:
   - vars.yaml
   tasks:
-  - name: Append registry in /etc/hosts
-    become: yes
-    ansible.builtin.blockinfile:
-      path: /etc/hosts
-      block: |
-        {{ hostvars['node0']['ansible_host'] }} {{ registry['domain'] }}
-
   - name: Check containerd sandbox repo
     ansible.builtin.shell: cat /etc/containerd/config.toml | grep "sandbox_image = \"{{ registry['url'] }}/"
     register: grep_sandbox

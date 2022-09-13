@@ -17,3 +17,9 @@
 # Install cilium CLI
 - import_playbook: cilium-cli.yaml
 
+# Install metallb
+- import_playbook: metallb.yaml
+
+# Configure metallb
+- import_playbook: metallb-conf.yaml
+

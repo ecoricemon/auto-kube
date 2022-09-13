@@ -1,0 +1,47 @@
+---
+- hosts: node0
+  gather_facts: no
+  vars_files:
+  - vars.yaml
+  vars:
+  - dir: "{{ metallb['temp_dir'] }}/conf"
+  tasks:
+  - name: Make temp dir
+    ansible.builtin.file:
+      path: "{{ dir }}"
+      state: directory
+
+  - name: Make IPAddressPool
+    ansible.builtin.blockinfile:
+      path: "{{ dir }}/ip-pool.yaml"
+      create: yes
+      block: |
+        apiVersion: metallb.io/v1beta1
+        kind: IPAddressPool
+        metadata:
+          name: lb-ip-pool
+          namespace: metallb-system
+        spec:
+          addresses:
+          - "{{ metallb['ip_pool'] }}"
+
+  - name: Apply IPAddressPool
+    ansible.builtin.shell: kubectl apply -f {{ dir }}/ip-pool.yaml
+
+  - name: Make L2Advertisement
+    ansible.builtin.blockinfile:
+      path: "{{ dir }}/l2ad.yaml"
+      create: yes
+      block: |
+        apiVersion: metallb.io/v1beta1
+        kind: L2Advertisement
+        metadata:
+          name: lb-l2-ad
+          namespace: metallb-system
+        spec:
+          ipAddressPools:
+          - lb-ip-pool
+
+  - name: Apply L2Advertisement
+    ansible.builtin.shell: kubectl apply -f {{ dir }}/l2ad.yaml
+

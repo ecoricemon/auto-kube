@@ -85,3 +85,15 @@
   - name: Run registry
     ansible.builtin.shell: docker-compose -f ~/.registry/docker-compose.yaml up -d
 
+- hosts: nodes
+  gather_facts: no
+  vars_files:
+  - vars.yaml
+  tasks:
+  - name: Append registry in /etc/hosts
+    become: yes 
+    ansible.builtin.blockinfile:
+      path: /etc/hosts
+      block: |
+        {{ hostvars['node0']['ansible_host'] }} {{ registry['domain'] }}
+

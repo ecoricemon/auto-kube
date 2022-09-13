@@ -6,6 +6,14 @@ base:
   reg:
     domain: registry.org
     port: 5000
+  cilium:
+    cli:
+      ver: 0.12.3
+    img:
+      ver: 1.12.1
+  metallb:
+    ver: 0.13.5
+    ip_pool: 10.0.3.100-10.0.3.200
 
 containerd:
   temp_dir: "{{ base['dir'] }}/containerd"
@@ -28,6 +36,11 @@ registry:
 
 cilium:
   temp_dir: "{{ base['dir'] }}/cilium"
-  cli_ver: v0.12.3
-  img_ver: 1.12.1
-  
+  cli_ver: "v{{ base['cilium']['cli']['ver'] }}"
+  img_ver: "{{ base['cilium']['img']['ver'] }}"
+
+metallb:
+  temp_dir: "{{ base['dir'] }}/metallb"
+  ver: "v{{ base['metallb']['ver'] }}" 
+  ip_pool: "{{ base['metallb']['ip_pool'] }}"
+
