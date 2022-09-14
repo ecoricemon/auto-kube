@@ -1,0 +1,68 @@
+---
+- hosts: node0
+  gather_facts: no
+  vars_files:
+  - vars.yaml
+  vars:
+  - dir: "{{ dashboard['temp_dir'] }}"
+  tasks:
+  - name: Check release
+    ansible.builtin.shell: helm list -n kubernetes-dashboard | grep kubernetes-dashboard
+    register: grep_dashboard
+    failed_when: grep_dashboard['rc'] == 2
+
+  - name: Clean
+    ansible.builtin.file:
+      path: "{{ dir }}"
+      state: absent
+    when: grep_dashboard['stdout'].find("kubernetes-dashboard") == -1
+
+  - name: Get chart
+    ansible.builtin.shell: helm pull kubernetes-dashboard --repo https://kubernetes.github.io/dashboard/ --version {{ dashboard['ver'] }} --untar --untardir {{ dir }}
+    when: grep_dashboard['stdout'].find("kubernetes-dashboard") == -1
+
+  - name: Collect image name
+    ansible.builtin.shell: |
+      helm template kubernetes-dashboard {{ dir }}/kubernetes-dashboard > {{ dir }}/rendered.yaml
+      cat {{ dir }}/rendered.yaml | grep "^[ \t]*image:" | sed "s/[ \t]*image: //" | sed "s/\"//g" > {{ dir }}/src-images
+    when: grep_dashboard['stdout'].find("kubernetes-dashboard") == -1
+
+  - name: Pull image
+    ansible.builtin.shell: |
+      linenum=$(wc -l {{ dir }}/src-images | cut -d ' ' -f 1)
+      i=1
+      while [ $i -le $linenum ]; do
+        src=$(sed "$i!d;q" {{ dir }}/src-images)
+        dest={{ registry['url'] }}/$src
+        echo $dest >> {{ dir }}/dest-images
+        repo=$(echo $dest | sed "s/{{ registry['url'] }}\///" | cut -d ':' -f 1)
+        tag=$(echo $dest | sed "s/{{ registry['url'] }}\///" | cut -d ':' -f 2)
+        existtags=$(curl -ks https://{{ registry['url'] }}/v2/$repo/tags/list)
+        if [ -z $(echo $existtags | grep $tag) ]; then
+          docker image pull $src
+          docker image tag $src $dest
+          docker image push $dest
+        fi
+        i=$((i+1))
+      done
+    when: grep_dashboard['stdout'].find("kubernetes-dashboard") == -1
+
+  - name: Change repository
+    ansible.builtin.shell: |
+      sed -i "s/repository: /repository: {{ registry['url'] }}\//" {{ dir }}/kubernetes-dashboard/values.yaml
+    when: grep_dashboard['stdout'].find("kubernetes-dashboard") == -1
+
+  - name: Create namespace
+    ansible.builtin.shell: kubectl create namespace kubernetes-dashboard
+    register: create_ns
+    failed_when: create_ns['rc'] != 0 and create_ns['rc'] != 1
+    when: grep_dashboard['stdout'].find("kubernetes-dashboard") == -1
+
+  - name: Install dashboard
+    ansible.builtin.shell: >
+      helm install kubernetes-dashboard {{ dir }}/kubernetes-dashboard \
+      -n kubernetes-dashboard \
+      --set service.type=LoadBalancer \
+      --set service.loadBalancerIP={{ dashboard['ip'] }}
+    when: grep_dashboard['stdout'].find("kubernetes-dashboard") == -1
+

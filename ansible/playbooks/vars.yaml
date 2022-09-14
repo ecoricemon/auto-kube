@@ -14,6 +14,9 @@ base:
   metallb:
     ver: 0.13.5
     ip_pool: 10.0.3.100-10.0.3.200
+  dashboard:
+    chart_ver: 5.10.0   
+    ip: 10.0.3.200
 
 containerd:
   temp_dir: "{{ base['dir'] }}/containerd"
@@ -43,4 +46,9 @@ metallb:
   temp_dir: "{{ base['dir'] }}/metallb"
   ver: "v{{ base['metallb']['ver'] }}" 
   ip_pool: "{{ base['metallb']['ip_pool'] }}"
+
+dashboard:
+  temp_dir: "{{ base['dir'] }}/dashboard"
+  ver: "{{ base['dashboard']['chart_ver'] }}"
+  ip: "{{ base['dashboard']['ip'] }}"
 

@@ -23,3 +23,9 @@
 # Configure metallb
 - import_playbook: metallb-conf.yaml
 
+# Install dashboard
+- import_playbook: dashboard.yaml
+
+# Configure dashboard
+- import_playbook: dashboard-conf.yaml
+
