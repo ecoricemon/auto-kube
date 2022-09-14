@@ -45,9 +45,9 @@ ssh_vm() {
 shutdown_vm() {
 	get_vm_info $1
 	if [ $1 = "ext" ]; then
-		ssh -p $SSH_PORT $VM_USER@localhost sudo shutdown now
+		ssh -p $SSH_PORT $VM_USER@localhost "echo kube | sudo -S shutdown now"
 	else
-		ssh -J $VM_USER@localhost:$SSH_PORT $VM_USER@$VM_IP sudo shutdown now
+		ssh -J $VM_USER@localhost:$SSH_PORT $VM_USER@$VM_IP "echo kube | sudo -S shutdown now"
 	fi
 }
 

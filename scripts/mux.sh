@@ -24,12 +24,9 @@ elif [ $# -eq 1 ]; then
 		myssh $GUEST_0
 	elif [ $1 = '1' ]; then
 		myssh $GUEST_1
-	elif [ $1 = '2' ]; then
-		myssh $GUEST_2
 	elif [ $1 = 'off' ]; then
 		myssh $GUEST_0 "echo kube | sudo -S poweroff"
 		myssh $GUEST_1 "echo kube | sudo -S poweroff"
-		myssh $GUEST_2 "echo kube | sudo -S poweroff"
 		myssh $GUEST_E "echo kube | sudo -S poweroff"
 	fi
 fi
