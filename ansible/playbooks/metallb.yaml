@@ -42,6 +42,6 @@
     ansible.builtin.shell: |
       sed -i "s/image: /image: {{ registry['url'] }}\//" {{ dir }}/metallb-native.yaml
 
-  - name: Apply metallb
+  - name: Install metallb
     ansible.builtin.shell: kubectl apply -f {{ dir }}/metallb-native.yaml
 

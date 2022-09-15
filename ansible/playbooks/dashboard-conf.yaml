@@ -37,15 +37,16 @@
           name: admin-user
           namespace: kubernetes-dashboard        
 
-  - name: Wait for running dashboard
+  - name: Wait for dashboard to become ready
     ansible.builtin.shell: |
       t=0
       wait=15
       try=6
       end=$((wait*try))
       while [ $t -lt $end ]; do
-        ready=$(kubectl get pods -n kubernetes-dashboard --no-headers=true -o custom-columns=:status.containerStatuses[*].ready | grep false)
-        if [ -z "$ready" ]; then
+        ready=$(kubectl get pods -n kubernetes-dashboard --no-headers=true -o custom-columns=:status.containerStatuses[*].ready | sed "s/<none>//g")
+        not_ready=$(echo $ready | grep false)
+        if [ -n "$ready" ] && [ -z "$not_ready" ]; then
           t=$end
         else
           sleep $wait

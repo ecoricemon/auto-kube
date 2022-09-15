@@ -36,15 +36,16 @@
           ipAddressPools:
           - lb-ip-pool
 
-  - name: Wait for running metallb
+  - name: Wait for metallb to become ready
     ansible.builtin.shell: |
       t=0
       wait=15
       try=6
       end=$((wait*try))
       while [ $t -lt $end ]; do
-        ready=$(kubectl get pods -n metallb-system --no-headers=true -o custom-columns=:status.containerStatuses[*].ready | grep false)
-        if [ -z "$ready" ]; then
+        ready=$(kubectl get pods -n metallb-system --no-headers=true -o custom-columns=:status.containerStatuses[*].ready | sed "s/<none>//g")
+        not_ready=$(echo $ready | grep false)
+        if [ -n "$ready" ] && [ -z "$not_ready" ]; then
           t=$end
         else
           sleep $wait
