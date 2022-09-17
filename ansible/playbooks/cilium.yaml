@@ -23,8 +23,12 @@
 
   - name: Collect image name
     ansible.builtin.shell: |
-      helm template cilium {{ dir }}/cilium > {{ dir }}/rendered.yaml
-      cat {{ dir }}/rendered.yaml | grep -e "^[ \t]*image:" | sed "s/[ \t]*image: \"*//" | cut -d '@' -f 1 > {{ dir }}/src-images
+      sed -Ei "s/(^[ \t]*tag: [a-zA-Z0-9\".]*)@([a-zA-Z0-9:]*)/\1/" {{ dir }}/cilium/values.yaml
+      sed -i "s/useDigest: true/useDigest: false/" {{ dir }}/cilium/values.yaml
+      helm template cilium {{ dir }}/cilium \
+        -n kube-system \
+        > {{ dir }}/rendered.yaml
+      cat {{ dir }}/rendered.yaml | grep -E "^[ \t]*image:" | sed "s/[ \t]*image: //; s/\"//g" > {{ dir }}/src-images
     when: grep_cilium['stdout'].find("cilium") == -1
 
   - name: Pull image
@@ -33,10 +37,10 @@
       i=1
       while [ $i -le $linenum ]; do
         src=$(sed "$i!d;q" {{ dir }}/src-images)
+        repo=$(echo $src | cut -d ':' -f 1)
+        tag=$(echo $src | cut -d ':' -f 2)
         dest={{ registry['url'] }}/$src
         echo $dest >> {{ dir }}/dest-images
-        repo=$(echo $dest | sed "s/{{ registry['url'] }}\///" | cut -d ':' -f 1)
-        tag=$(echo $dest | sed "s/{{ registry['url'] }}\///" | cut -d ':' -f 2)
         existtags=$(curl -ks "https://{{ registry['url'] }}/v2/$repo/tags/list")
         if [ -z $(echo $existtags | grep $tag) ]; then
           docker image pull $src
@@ -47,14 +51,17 @@
       done
     when: grep_cilium['stdout'].find("cilium") == -1
 
-  - name: Change repository
+  - name: Install cilium
     ansible.builtin.shell: |
       sed -i "s/repository: \"/repository: \"{{ registry['url'] }}\//" "{{ dir }}/cilium/values.yaml"
-      sed -i "s/useDigest: true/useDigest: false/" "{{ dir }}/cilium/values.yaml"
-    when: grep_cilium['stdout'].find("cilium") == -1
-
-  - name: Install cilium
-    ansible.builtin.shell: helm install cilium "{{ dir }}/cilium" -n kube-system
+      cp_addr=$(cat {{ kubeadm['temp_dir'] }}/join-cmd | grep -Eo "([0-9]{1,3}.){3}[0-9]{1,3}:[0-9]{2,5}")
+      cp_ip=$(echo $cp_addr | cut -d ':' -f 1)
+      cp_port=$(echo $cp_addr | cut -d ':' -f 2)
+      helm install cilium {{ dir }}/cilium \
+        -n kube-system \
+        --set kubeProxyReplacement=strict \
+        --set k8sServiceHost=$cp_ip \
+        --set k8sServicePort=$cp_port
     when: grep_cilium['stdout'].find("cilium") == -1
 
 - hosts: nodes

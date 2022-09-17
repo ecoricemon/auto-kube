@@ -13,10 +13,10 @@ base:
       ver: 1.12.1
   metallb:
     ver: 0.13.5
-    ip_pool: 10.0.3.100-10.0.3.200
+    ip_pool: 10.0.3.200-10.0.3.254
   dashboard:
     chart_ver: 5.10.0   
-    ip: 10.0.3.200
+    ip: 10.0.3.254
 
 containerd:
   temp_dir: "{{ base['dir'] }}/containerd"

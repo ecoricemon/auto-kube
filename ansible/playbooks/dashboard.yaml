@@ -24,7 +24,7 @@
   - name: Collect image name
     ansible.builtin.shell: |
       helm template kubernetes-dashboard {{ dir }}/kubernetes-dashboard > {{ dir }}/rendered.yaml
-      cat {{ dir }}/rendered.yaml | grep "^[ \t]*image:" | sed "s/[ \t]*image: //" | sed "s/\"//g" > {{ dir }}/src-images
+      cat {{ dir }}/rendered.yaml | grep "^[ \t]*image:" | sed "s/[ \t]*image: //; s/\"//g" > {{ dir }}/src-images
     when: grep_dashboard['stdout'].find("kubernetes-dashboard") == -1
 
   - name: Pull image
@@ -33,10 +33,10 @@
       i=1
       while [ $i -le $linenum ]; do
         src=$(sed "$i!d;q" {{ dir }}/src-images)
+        repo=$(echo $src | cut -d ':' -f 1)
+        tag=$(echo $src | cut -d ':' -f 2)
         dest={{ registry['url'] }}/$src
         echo $dest >> {{ dir }}/dest-images
-        repo=$(echo $dest | sed "s/{{ registry['url'] }}\///" | cut -d ':' -f 1)
-        tag=$(echo $dest | sed "s/{{ registry['url'] }}\///" | cut -d ':' -f 2)
         existtags=$(curl -ks https://{{ registry['url'] }}/v2/$repo/tags/list)
         if [ -z $(echo $existtags | grep $tag) ]; then
           docker image pull $src
@@ -62,6 +62,7 @@
     ansible.builtin.shell: >
       helm install kubernetes-dashboard {{ dir }}/kubernetes-dashboard \
       -n kubernetes-dashboard \
+      --set extraArgs={--token-ttl=0} \
       --set service.type=LoadBalancer \
       --set service.loadBalancerIP={{ dashboard['ip'] }}
     when: grep_dashboard['stdout'].find("kubernetes-dashboard") == -1
