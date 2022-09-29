@@ -64,6 +64,7 @@
       pkg:
       - docker-ce
       - docker-ce-cli
+      - docker-compose-plugin
     when: "'docker-ce' not in ansible_facts.packages"
 
   - name: Add docker group
@@ -81,11 +82,4 @@
 
   - name: Reset ssh connection to apply group
     ansible.builtin.meta: reset_connection
-
-  - name: Install docker-compose
-    become: yes
-    ansible.builtin.apt:
-      pkg:
-      - docker-compose
-    when: "'docker-compose' not in ansible_facts.packages"
 

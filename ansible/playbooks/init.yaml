@@ -14,8 +14,11 @@
 # Set ssh
 - import_playbook: ssh.yaml
 
-# Run private registry
-- import_playbook: registry.yaml
+# Create cert
+- import_playbook: cert.yaml
+
+# Install harbor
+- import_playbook: harbor.yaml
 
 # Set containerd
 - import_playbook: containerd.yaml

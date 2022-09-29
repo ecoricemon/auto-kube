@@ -5,11 +5,11 @@
   vars_files:
   - vars.yaml
   vars:
-  - dir: "{{ kubeadm['temp_dir'] }}"
+  - dir: "{{ kubeadm['dir'] }}"
   tasks:
   - name: Make temp dir
     ansible.builtin.file:
-      path: "{{ kubeadm['temp_dir'] }}"
+      path: "{{ dir }}"
       state: directory
 
   - name: Make cluster
@@ -19,7 +19,7 @@
         --cri-socket "unix:///run/containerd/containerd.sock" \
         --pod-network-cidr "10.244.0.0/16" \
         --apiserver-advertise-address "{{ hostvars['node0']['ansible_host'] }}" \
-        --image-repository "{{ registry['url'] }}/k8s.gcr.io" \
+        --image-repository "{{ harbor['url'] }}/k8s.gcr.io" \
         --kubernetes-version "{{ kubeadm['cmd_ver'] }}" \
         --skip-phases "addon/kube-proxy"
     register: init
@@ -52,11 +52,11 @@
   vars_files:
   - vars.yaml
   vars:
-  - dir: "{{ kubeadm['temp_dir'] }}"
+  - dir: "{{ kubeadm['dir'] }}"
   tasks:
   - name: Make temp dir
     ansible.builtin.file:
-      path: "{{ kubeadm['temp_dir'] }}"
+      path: "{{ dir }}"
       state: directory
 
   - name: Copy join cmd

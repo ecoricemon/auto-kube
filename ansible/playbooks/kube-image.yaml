@@ -1,11 +1,11 @@
 ---
-# Pull kube images ans push it to private registry
+# Pull kube images ans push it to harbor
 - hosts: node0
   gather_facts: no
   vars_files:
   - vars.yaml
   vars:
-  - dir: "{{ kubeadm['temp_dir'] }}"
+  - dir: "{{ kubeadm['dir'] }}"
   tasks:
   - name: Make temp dir
     ansible.builtin.file:
@@ -16,15 +16,15 @@
     ansible.builtin.shell: |
       srcrepo=$(kubeadm config print init-defaults | grep imageRepository | sed "s/^imageRepository: //")
       kubeadm config images list --kubernetes-version "{{ kubeadm['cmd_ver'] }}" > "{{ dir }}/src-images"
-      kubeadm config images list --kubernetes-version "{{ kubeadm['cmd_ver'] }}" --image-repository "{{ registry['url'] }}/$srcrepo" > "{{ dir }}/dest-images"
+      kubeadm config images list --kubernetes-version "{{ kubeadm['cmd_ver'] }}" --image-repository "{{ harbor['url'] }}/$srcrepo" > "{{ dir }}/dest-images"
       linenum=$(wc -l "{{ dir }}/src-images" | cut -d ' ' -f 1)
       i=1
       while [ $i -le $linenum ]; do
         src=$(sed "$i!d;q" "{{ dir }}/src-images")
         dest=$(sed "$i!d;q" "{{ dir }}/dest-images")
-        repo=$(echo $dest | sed "s/{{ registry['url'] }}\///" | cut -d ':' -f 1)
-        tag=$(echo $dest | sed "s/{{ registry['url'] }}\///" | cut -d ':' -f 2)
-        existtags=$(curl -ks "https://{{ registry['url'] }}/v2/$repo/tags/list")
+        repo=$(echo $dest | sed "s/{{ harbor['url'] }}\///" | cut -d ':' -f 1)
+        tag=$(echo $dest | sed "s/{{ harbor['url'] }}\///" | cut -d ':' -f 2)
+        existtags=$(curl -ks "https://{{ harbor['url'] }}/v2/$repo/tags/list")
         if [ -z $(echo $existtags | grep $tag) ]; then
           docker image pull $src
           docker image tag $src $dest

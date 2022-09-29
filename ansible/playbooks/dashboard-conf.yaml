@@ -4,7 +4,7 @@
   vars_files:
   - vars.yaml
   vars:
-  - dir: "{{ dashboard['temp_dir'] }}/conf"
+  - dir: "{{ dashboard['dir'] }}/conf"
   tasks:
   - name: Make temp dir
     ansible.builtin.file:

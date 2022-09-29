@@ -1,0 +1,139 @@
+---
+# Install and run harbor
+- hosts: node0
+  gather_facts: yes
+  vars_files:
+  - vars.yaml
+  vars:
+  - dir: "{{ harbor['dir'] }}"
+  - installer: "harbor-offline-installer-{{ harbor['ver'] }}.tgz"
+  tasks:
+  - name: Make sure the dirs exist
+    ansible.builtin.file:
+      path: "{{ item }}"
+      state: directory
+    loop:
+    - "{{ dir }}/certs"
+    - "{{ dir }}/data"
+    - "{{ dir }}/log"
+
+  - name: Check harbor installer
+    ansible.builtin.stat:
+      path: "{{ dir }}/{{ installer }}"
+    register: stat_installer
+
+  - name: Download harbor installer
+    ansible.builtin.shell: curl -ksLo {{ dir }}/{{ installer }} https://github.com/goharbor/harbor/releases/download/{{ harbor['ver'] }}/{{ installer }} 
+    when: not stat_installer['stat']['exists']
+
+  - name: Check harbor status
+    ansible.builtin.shell: docker compose ls | grep harbor
+    register: grep_harbor
+    failed_when: grep_harbor['rc'] == 2
+
+  - name: Remove previous untar dir
+    become: yes
+    ansible.builtin.file:
+      path: "{{ dir }}/harbor"
+      state: absent
+    when: grep_harbor['rc'] == 1
+
+  - name: Untar installer
+    ansible.builtin.shell: tar -xzf {{ dir }}/{{ installer }} -C {{ dir }}
+    when: grep_harbor['rc'] == 1
+    
+  - name: Copy harbor.yml from template
+    ansible.builtin.copy:
+      remote_src: yes
+      src: "{{ dir }}/harbor/harbor.yml.tmpl"
+      dest: "{{ dir }}/harbor/harbor.yml"
+    when: grep_harbor['rc'] == 1
+ 
+  - name: Configure harbor.yml
+    ansible.builtin.shell: |
+      sed -Ei "s#^(hostname:) ([a-zA-Z0-9/\.]+)#\1 {{ harbor['domain'] }}#" {{ dir }}/harbor/harbor.yml
+      sed -Ei "s/port: 80/port: 10080/" {{ dir }}/harbor/harbor.yml
+      sed -Ei "s/port: 443/port: 10443/" {{ dir }}/harbor/harbor.yml
+      sed -Ei "s#(certificate:) ([a-zA-Z0-9/\.]+)#\1 {{ dir }}/certs/cert.crt#" {{ dir }}/harbor/harbor.yml
+      sed -Ei "s#(private_key:) ([a-zA-Z0-9/\.]+)#\1 {{ dir }}/certs/cert.key#" {{ dir }}/harbor/harbor.yml
+      sed -Ei "s#^(data_volume:) ([a-zA-Z0-9/\.]+)#\1 {{ dir }}/data#" {{ dir }}/harbor/harbor.yml
+      sed -Ei "s#^([ \t]*location:) ([a-zA-Z0-9/\.]+)#\1 {{ dir }}/log#" {{ dir }}/harbor/harbor.yml
+      sed -Ei "s/^(harbor_admin_password:) ([a-zA-Z0-9]+)/\1 {{ harbor['pw'] }}/" {{ dir }}/harbor/harbor.yml
+    when: grep_harbor['rc'] == 1
+
+  - name: Copy cert into the harbor dir
+    ansible.builtin.copy:
+      remote_src: yes
+      src: "{{ item }}"
+      dest: "{{ dir }}/certs/"
+    loop:
+    - "{{ certs['dir'] }}/cert.crt"
+    - "{{ certs['dir'] }}/cert.key"
+    when: grep_harbor['rc'] == 1
+
+  - name: Copy cert into the docker dir
+    become: yes
+    ansible.builtin.copy:
+      remote_src: yes
+      src: "{{ certs['dir'] }}/cert.crt"
+      dest: "/etc/docker/certs.d/{{ harbor['url'] }}/"
+    when: grep_harbor['rc'] == 1
+
+  # Some harbor containers may fall into exited states because of its dependencies after reboot
+  # So, make a systemd unit and use it on reboot
+  - name: Disable running harbor in the install script
+    ansible.builtin.shell: sed -i "s/\$DOCKER_COMPOSE up/#\$DOCKER_COMPOSE up/" {{ dir }}/harbor/install.sh
+    when: grep_harbor['rc'] == 1
+
+  - name: Prepare harbor
+    become: yes
+    ansible.builtin.shell: "{{ dir }}/harbor/install.sh"
+    when: grep_harbor['rc'] == 1
+
+# Preserve restart options (harbor-jobservice container may return exit code 2)
+#  - name: Turn restarting off from the docker-compose.yml
+#    ansible.builtin.shell: |
+#      sed -i "s/restart: always/#restart: always/" {{ dir }}/harbor/docker-compose.yml
+
+  - name: Remove previous harbor systemd unit
+    ansible.builtin.file:
+      path: "{{ dir }}/harbor.service"
+      state: absent
+    when: grep_harbor['rc'] == 1
+
+  - name: Make harbor systemd unit
+    ansible.builtin.blockinfile:
+      path: "{{ dir }}/harbor.service"
+      create: yes
+      block: |
+        [Unit]
+        Description=Harbor docker compose
+        Requires=docker.service
+        After=docker.service
+        
+        [Service]
+        Type=simple
+        ExecStart=/usr/bin/docker compose -f /home/kube/.kube-ansible/harbor/harbor/docker-compose.yml up
+        ExecStop=/usr/bin/docker compose -f /home/kube/.kube-ansible/harbor/harbor/docker-compose.yml down
+        
+        [Install]
+        WantedBy=multi-user.target
+    when: grep_harbor['rc'] == 1
+
+  - name: Register harbor.service and start it now
+    become: yes
+    ansible.builtin.shell: systemctl enable {{ dir }}/harbor.service --now
+    when: grep_harbor['rc'] == 1
+
+- hosts: nodes
+  gather_facts: no
+  vars_files:
+  - vars.yaml
+  tasks:
+  - name: Append harbor addr in /etc/hosts
+    become: yes
+    ansible.builtin.blockinfile:
+      path: /etc/hosts
+      block: |
+        {{ hostvars['node0']['ansible_host'] }} {{ harbor['domain'] }}
+

@@ -4,7 +4,7 @@
   vars_files:
   - vars.yaml
   vars:
-  - dir: "{{ metallb['temp_dir'] }}/conf"
+  - dir: "{{ metallb['dir'] }}/conf"
   tasks:
   - name: Make temp dir
     ansible.builtin.file:

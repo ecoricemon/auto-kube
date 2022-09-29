@@ -3,9 +3,11 @@ base:
   dir: "/home/{{ ansible_user }}/.kube-ansible"
   kube:
     ver: 1.24.4
-  reg:
+  harbor:
     domain: registry.org
-    port: 5000
+    port: 10443
+    ver: 2.6.0
+    pw: admin
   cilium:
     cli:
       ver: 0.12.3
@@ -19,36 +21,43 @@ base:
     ip: 10.0.3.254
 
 containerd:
-  temp_dir: "{{ base['dir'] }}/containerd"
+  dir: "{{ base['dir'] }}/containerd"
 
 kubelet:
   apt_ver: "{{ base['kube']['ver'] }}-00"
 
 kubeadm:
-  temp_dir: "{{ base['dir'] }}/kubeadm"
+  dir: "{{ base['dir'] }}/kubeadm"
   apt_ver: "{{ base['kube']['ver'] }}-00"
   cmd_ver: "v{{ base['kube']['ver'] }}"
 
 kubectl:
   apt_ver: "{{ base['kube']['ver'] }}-00"
- 
-registry:
-  domain: "{{ base['reg']['domain'] }}"
-  port: "{{ base['reg']['port'] }}"
-  url: "{{ base['reg']['domain'] }}:{{ base['reg']['port'] }}" 
+
+certs:
+  dir: "{{ base['dir'] }}/certs" 
+
+harbor:
+  dir: "{{ base['dir'] }}/harbor"
+  ver: "v{{ base['harbor']['ver'] }}"
+  domain: "{{ base['harbor']['domain'] }}"
+  port: "{{ base['harbor']['port'] }}"
+  url: "{{ base['harbor']['domain'] }}:{{ base['harbor']['port'] }}" 
+  prj: "{{ base['harbor']['domain'] }}:{{ base['harbor']['port'] }}/library" 
+  pw: "{{ base['harbor']['pw'] }}"
 
 cilium:
-  temp_dir: "{{ base['dir'] }}/cilium"
+  dir: "{{ base['dir'] }}/cilium"
   cli_ver: "v{{ base['cilium']['cli']['ver'] }}"
   img_ver: "{{ base['cilium']['img']['ver'] }}"
 
 metallb:
-  temp_dir: "{{ base['dir'] }}/metallb"
+  dir: "{{ base['dir'] }}/metallb"
   ver: "v{{ base['metallb']['ver'] }}" 
   ip_pool: "{{ base['metallb']['ip_pool'] }}"
 
 dashboard:
-  temp_dir: "{{ base['dir'] }}/dashboard"
+  dir: "{{ base['dir'] }}/dashboard"
   ver: "{{ base['dashboard']['chart_ver'] }}"
   ip: "{{ base['dashboard']['ip'] }}"
 

@@ -4,7 +4,7 @@
   vars_files:
   - vars.yaml
   vars:
-  - dir: "{{ cilium['temp_dir'] }}/cli"
+  - dir: "{{ cilium['dir'] }}/cli"
   tasks:
   - name: Check cilium
     ansible.builtin.shell: cilium

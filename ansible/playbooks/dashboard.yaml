@@ -4,7 +4,7 @@
   vars_files:
   - vars.yaml
   vars:
-  - dir: "{{ dashboard['temp_dir'] }}"
+  - dir: "{{ dashboard['dir'] }}"
   tasks:
   - name: Check release
     ansible.builtin.shell: helm list -n kubernetes-dashboard | grep kubernetes-dashboard
@@ -35,9 +35,9 @@
         src=$(sed "$i!d;q" {{ dir }}/src-images)
         repo=$(echo $src | cut -d ':' -f 1)
         tag=$(echo $src | cut -d ':' -f 2)
-        dest={{ registry['url'] }}/$src
+        dest={{ harbor['url'] }}/$src
         echo $dest >> {{ dir }}/dest-images
-        existtags=$(curl -ks https://{{ registry['url'] }}/v2/$repo/tags/list)
+        existtags=$(curl -ks https://{{ harbor['url'] }}/v2/$repo/tags/list)
         if [ -z $(echo $existtags | grep $tag) ]; then
           docker image pull $src
           docker image tag $src $dest
@@ -49,7 +49,7 @@
 
   - name: Change repository
     ansible.builtin.shell: |
-      sed -i "s/repository: /repository: {{ registry['url'] }}\//" {{ dir }}/kubernetes-dashboard/values.yaml
+      sed -i "s/repository: /repository: {{ harbor['url'] }}\//" {{ dir }}/kubernetes-dashboard/values.yaml
     when: grep_dashboard['stdout'].find("kubernetes-dashboard") == -1
 
   - name: Create namespace
