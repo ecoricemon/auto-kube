@@ -1,0 +1,32 @@
+---
+- ansible.builtin.package_facts:
+    manager: auto
+
+- name: Install jq to parse json
+  become: yes
+  ansible.builtin.apt:
+    update_cache: yes
+    pkg:
+    - jq
+  when: "'jq' not in ansible_facts.packages"
+
+- name: Wait for harbor to become ready
+  ansible.builtin.shell: |
+    t=0 
+    wait=15
+    try=6
+    end=$((wait*try))
+    while [ $t -lt $end ]; do
+      ready=$(curl -ksu admin:{{ harbor['pw'] }} https://{{ harbor['url'] }}/api/v2.0/health | jq -r .status)
+      if [ $ready = 'healthy' ]; then
+        exit 0
+      else
+        sleep $wait
+      fi
+      t=$((t+wait))
+    done
+    exit 1
+
+- name: Login to harbor
+  ansible.builtin.shell: docker login -u admin -p {{ harbor['pw'] }} {{ harbor['url'] }}
+

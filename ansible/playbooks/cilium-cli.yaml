@@ -13,7 +13,7 @@
     - cmd_cilium['rc'] != 0
     - cmd_cilium['rc'] != 127
 
-  - name: Make temp dir
+  - name: Make sure the dir exists
     ansible.builtin.file:
       path: "{{ dir }}"
       state: directory

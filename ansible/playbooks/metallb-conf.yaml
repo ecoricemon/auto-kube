@@ -46,12 +46,13 @@
         ready=$(kubectl get pods -n metallb-system --no-headers=true -o custom-columns=:status.containerStatuses[*].ready | sed "s/<none>//g")
         not_ready=$(echo $ready | grep false)
         if [ -n "$ready" ] && [ -z "$not_ready" ]; then
-          t=$end
+          exit 0
         else
           sleep $wait
         fi
         t=$((t+wait))
       done
+      exit 1
 
   - name: Apply metallb conf manifest
     ansible.builtin.shell: kubectl apply -f {{ dir }}/metallb-conf.yaml

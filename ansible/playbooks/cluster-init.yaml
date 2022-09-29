@@ -19,7 +19,7 @@
         --cri-socket "unix:///run/containerd/containerd.sock" \
         --pod-network-cidr "10.244.0.0/16" \
         --apiserver-advertise-address "{{ hostvars['node0']['ansible_host'] }}" \
-        --image-repository "{{ harbor['url'] }}/k8s.gcr.io" \
+        --image-repository "{{ harbor['prj'] }}/k8s.gcr.io" \
         --kubernetes-version "{{ kubeadm['cmd_ver'] }}" \
         --skip-phases "addon/kube-proxy"
     register: init

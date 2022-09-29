@@ -6,7 +6,7 @@
   vars:
   - dir: "{{ dashboard['dir'] }}/conf"
   tasks:
-  - name: Make temp dir
+  - name: Make sure the dir exists
     ansible.builtin.file:
       path: "{{ dir }}"
       state: directory
@@ -47,12 +47,13 @@
         ready=$(kubectl get pods -n kubernetes-dashboard --no-headers=true -o custom-columns=:status.containerStatuses[*].ready | sed "s/<none>//g")
         not_ready=$(echo $ready | grep false)
         if [ -n "$ready" ] && [ -z "$not_ready" ]; then
-          t=$end
+          exit 0
         else
           sleep $wait
         fi
         t=$((t+wait))
       done
+      exit 1
 
   - name: Apply dashboard conf manifest
     ansible.builtin.shell: kubectl apply -f {{ dir }}/dashboard-conf.yaml

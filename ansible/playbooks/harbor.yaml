@@ -53,7 +53,7 @@
     ansible.builtin.shell: |
       sed -Ei "s#^(hostname:) ([a-zA-Z0-9/\.]+)#\1 {{ harbor['domain'] }}#" {{ dir }}/harbor/harbor.yml
       sed -Ei "s/port: 80/port: 10080/" {{ dir }}/harbor/harbor.yml
-      sed -Ei "s/port: 443/port: 10443/" {{ dir }}/harbor/harbor.yml
+      sed -Ei "s/port: 443/port: {{ harbor['port'] }}/" {{ dir }}/harbor/harbor.yml
       sed -Ei "s#(certificate:) ([a-zA-Z0-9/\.]+)#\1 {{ dir }}/certs/cert.crt#" {{ dir }}/harbor/harbor.yml
       sed -Ei "s#(private_key:) ([a-zA-Z0-9/\.]+)#\1 {{ dir }}/certs/cert.key#" {{ dir }}/harbor/harbor.yml
       sed -Ei "s#^(data_volume:) ([a-zA-Z0-9/\.]+)#\1 {{ dir }}/data#" {{ dir }}/harbor/harbor.yml

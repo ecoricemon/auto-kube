@@ -27,17 +27,20 @@
       cat {{ dir }}/rendered.yaml | grep "^[ \t]*image:" | sed "s/[ \t]*image: //; s/\"//g" > {{ dir }}/src-images
     when: grep_dashboard['stdout'].find("kubernetes-dashboard") == -1
 
+  - name: Login to harbor
+    import_tasks: login-harbor.yaml
+
   - name: Pull image
     ansible.builtin.shell: |
       linenum=$(wc -l {{ dir }}/src-images | cut -d ' ' -f 1)
       i=1
       while [ $i -le $linenum ]; do
         src=$(sed "$i!d;q" {{ dir }}/src-images)
-        repo=$(echo $src | cut -d ':' -f 1)
-        tag=$(echo $src | cut -d ':' -f 2)
-        dest={{ harbor['url'] }}/$src
+        dest={{ harbor['prj'] }}/$src
+        repo=$(echo $dest | sed "s#{{ harbor['url'] }}/##" | cut -d ':' -f 1)
+        tag=$(echo $dest | sed "s#{{ harbor['url'] }}/##" | cut -d ':' -f 2)
         echo $dest >> {{ dir }}/dest-images
-        existtags=$(curl -ks https://{{ harbor['url'] }}/v2/$repo/tags/list)
+        existtags=$(curl -ksu admin:{{ harbor['pw'] }} https://{{ harbor['url'] }}/v2/$repo/tags/list)
         if [ -z $(echo $existtags | grep $tag) ]; then
           docker image pull $src
           docker image tag $src $dest
@@ -49,7 +52,7 @@
 
   - name: Change repository
     ansible.builtin.shell: |
-      sed -i "s/repository: /repository: {{ harbor['url'] }}\//" {{ dir }}/kubernetes-dashboard/values.yaml
+      sed -i "s#repository: #repository: {{ harbor['prj'] }}/#" {{ dir }}/kubernetes-dashboard/values.yaml
     when: grep_dashboard['stdout'].find("kubernetes-dashboard") == -1
 
   - name: Create namespace
