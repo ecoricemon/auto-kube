@@ -6,25 +6,31 @@
   vars:
   - dir: "{{ metallb['dir'] }}"
   tasks:
-  - name: Clean
-    ansible.builtin.file:
-      path: "{{ dir }}"
-      state: absent
-
   - name: Make sure the dir exists
     ansible.builtin.file:
       path: "{{ dir }}"
       state: directory
 
-  - name: Get manifest and collect image
+  - name: Check metallb manifest
+    ansible.builtin.stat:
+      path: "{{ dir }}/metallb-native.yaml.org"
+    register: stat_metallb
+
+  - name: Download metallb manifest and collect image names
+    ansible.builtin.shell: >
+      curl https://raw.githubusercontent.com/metallb/metallb/{{ metallb['ver'] }}/config/manifests/metallb-native.yaml \
+        -o {{ dir }}/metallb-native.yaml.org
+    when: not stat_metallb['stat']['exists']
+
+  - name: Copy manifest and collect image names
     ansible.builtin.shell: |
-      curl https://raw.githubusercontent.com/metallb/metallb/{{ metallb['ver'] }}/config/manifests/metallb-native.yaml -o {{ dir }}/metallb-native.yaml
+      cp -f {{ dir }}/metallb-native.yaml.org {{ dir }}/metallb-native.yaml
       cat {{ dir }}/metallb-native.yaml | grep image: | sed "s/image: //; s/ //g" > {{ dir }}/src-images
 
   - name: Login to harbor
     import_tasks: login-harbor.yaml
 
-  - name: Pull image
+  - name: Pull metallb images
     ansible.builtin.shell: |
       linenum=$(wc -l {{ dir }}/src-images | cut -d ' ' -f 1)
       i=1
@@ -43,7 +49,7 @@
         i=$((i+1))
       done
 
-  - name: Change repository
+  - name: Change metallb repository in the manifest
     ansible.builtin.shell: |
       sed -i "s#image: #image: {{ harbor['prj'] }}/#" {{ dir }}/metallb-native.yaml
 

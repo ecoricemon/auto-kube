@@ -31,14 +31,14 @@
     register: grep_harbor
     failed_when: grep_harbor['rc'] == 2
 
-  - name: Remove previous untar dir
+  - name: Remove previous harbor untar dir
     become: yes
     ansible.builtin.file:
       path: "{{ dir }}/harbor"
       state: absent
     when: grep_harbor['rc'] == 1
 
-  - name: Untar installer
+  - name: Untar harbor installer
     ansible.builtin.shell: tar -xzf {{ dir }}/{{ installer }} -C {{ dir }}
     when: grep_harbor['rc'] == 1
     

@@ -7,7 +7,7 @@
   vars:
   - dir: "{{ kubeadm['dir'] }}"
   tasks:
-  - name: Make temp dir
+  - name: Make sure the dir exists
     ansible.builtin.file:
       path: "{{ dir }}"
       state: directory

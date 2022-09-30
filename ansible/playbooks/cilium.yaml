@@ -6,35 +6,50 @@
   vars:
   - dir: "{{ cilium['dir'] }}/chart"
   tasks:
-  - name: Check release
-    ansible.builtin.shell: helm list -n kube-system | grep cilium
-    register: grep_cilium
-    failed_when: grep_cilium.rc == 2
-
-  - name: Clean
+  - name: Make sure the dir exists
     ansible.builtin.file:
       path: "{{ dir }}"
+      state: directory
+
+  - name: Check cilium chart
+    ansible.builtin.stat:
+      path: "{{ dir }}/cilium-{{ cilium['img_ver'] }}.tgz"
+    register: stat_chart
+
+  - name: Pull cilium chart
+    ansible.builtin.shell: |
+      helm pull cilium --repo https://helm.cilium.io --version {{ cilium['img_ver'] }}
+      mv ~/cilium-{{ cilium['img_ver'] }}.tgz {{ dir }}/
+    when: not stat_chart['stat']['exists']
+
+  - name: Check cilium
+    ansible.builtin.shell: helm list -n kube-system | grep cilium
+    register: grep_cilium
+    failed_when: grep_cilium['rc'] == 2
+
+  - name: Remove previous cilium untar dir
+    ansible.builtin.file:
+      path: "{{ dir }}/cilium"
       state: absent
-    when: grep_cilium['stdout'].find("cilium") == -1
+    when: grep_cilium['rc'] == 1
 
-  - name: Get chart
-    ansible.builtin.shell: helm pull cilium --repo https://helm.cilium.io --version {{ cilium['img_ver'] }} --untar --untardir {{ dir }}
-    when: grep_cilium['stdout'].find("cilium") == -1
+  - name: Untar cilium chart
+    ansible.builtin.shell: tar -xzf {{ dir }}/cilium-{{ cilium['img_ver'] }}.tgz -C {{ dir }}
+    when: grep_cilium['rc'] == 1
 
-  - name: Collect image name
+  - name: Collect cilium image names
     ansible.builtin.shell: |
       sed -Ei "s/(^[ \t]*tag: [a-zA-Z0-9\".]*)@([a-zA-Z0-9:]*)/\1/" {{ dir }}/cilium/values.yaml
       sed -i "s/useDigest: true/useDigest: false/" {{ dir }}/cilium/values.yaml
-      helm template cilium {{ dir }}/cilium \
-        -n kube-system \
-        > {{ dir }}/rendered.yaml
+      helm template cilium {{ dir }}/cilium -n kube-system > {{ dir }}/rendered.yaml
       cat {{ dir }}/rendered.yaml | grep -E "^[ \t]*image:" | sed "s/[ \t]*image: //; s/\"//g" > {{ dir }}/src-images
-    when: grep_cilium['stdout'].find("cilium") == -1
+    when: grep_cilium['rc'] == 1
 
   - name: Login to harbor
     import_tasks: login-harbor.yaml
+    when: grep_cilium['rc'] == 1
 
-  - name: Pull image
+  - name: Pull cilium images
     ansible.builtin.shell: |
       linenum=$(wc -l {{ dir }}/src-images | cut -d ' ' -f 1)
       i=1
@@ -52,7 +67,7 @@
         fi
         i=$((i+1))
       done
-    when: grep_cilium['stdout'].find("cilium") == -1
+    when: grep_cilium['rc'] == 1
 
   - name: Install cilium
     ansible.builtin.shell: |
@@ -65,7 +80,7 @@
         --set kubeProxyReplacement=strict \
         --set k8sServiceHost=$cp_ip \
         --set k8sServicePort=$cp_port
-    when: grep_cilium['stdout'].find("cilium") == -1
+    when: grep_cilium['rc'] == 1
 
 - hosts: nodes
   gather_facts: no
@@ -73,5 +88,5 @@
   - name: Restart containerd
     become: yes
     ansible.builtin.shell: systemctl restart containerd
-    when: hostvars['node0']['grep_cilium']['stdout'].find("cilium") == -1
+    when: hostvars['node0']['grep_cilium']['rc'] == 1
 
