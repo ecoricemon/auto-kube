@@ -1,8 +1,8 @@
 ---
 # Ansible inventory
-nodes:
+cluster:
   hosts:
-    node0:
+    cp0:
       ansible_host: 10.0.3.10
       ansible_user: kube
       ansible_ssh_common_args: "-J kube@localhost:8022"
@@ -11,7 +11,15 @@ nodes:
       ansible_user: kube
       ansible_ssh_common_args: "-J kube@localhost:8022"
 
+registry:
+  hosts:
+    registry0:
+      ansible_host: 10.0.3.9
+      ansible_user: kube
+      ansible_ssh_common_args: "-J kube@localhost:8022"
+
 all:
   children:
-    nodes:
+    cluster:
+    registry:
 

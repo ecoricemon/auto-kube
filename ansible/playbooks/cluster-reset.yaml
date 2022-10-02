@@ -1,6 +1,6 @@
 ---
 # Clean
-- hosts: nodes
+- hosts: cluster
   gather_facts: no
   tasks:
   - name: Reset cluster
@@ -21,7 +21,7 @@
       path: /etc/cni/net.d
       state: directory
 
-- hosts: node0
+- hosts: cp0
   gather_facts: no
   tasks:
   - name: Delete ~/.kube

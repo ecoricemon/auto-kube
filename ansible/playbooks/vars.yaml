@@ -2,7 +2,7 @@
 base:
   dir: "/home/{{ ansible_user }}/.kube-ansible"
   kube:
-    ver: 1.24.4
+    ver: 1.24.6
   harbor:
     domain: registry.org
     port: 10443
@@ -10,9 +10,9 @@ base:
     pw: admin
   cilium:
     cli:
-      ver: 0.12.3
+      ver: 0.12.4
     img:
-      ver: 1.12.1
+      ver: 1.12.2
   metallb:
     ver: 0.13.5
     ip_pool: 10.0.3.200-10.0.3.254

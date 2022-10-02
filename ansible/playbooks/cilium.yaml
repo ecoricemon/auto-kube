@@ -1,5 +1,5 @@
 ---
-- hosts: node0
+- hosts: cp0
   gather_facts: no
   vars_files:
   - vars.yaml
@@ -46,7 +46,7 @@
     when: grep_cilium['rc'] == 1
 
   - name: Login to harbor
-    import_tasks: login-harbor.yaml
+    ansible.builtin.import_tasks: login-harbor.yaml
     when: grep_cilium['rc'] == 1
 
   - name: Pull cilium images
@@ -82,11 +82,11 @@
         --set k8sServicePort=$cp_port
     when: grep_cilium['rc'] == 1
 
-- hosts: nodes
+- hosts: cluster
   gather_facts: no
   tasks:
   - name: Restart containerd
     become: yes
     ansible.builtin.shell: systemctl restart containerd
-    when: hostvars['node0']['grep_cilium']['rc'] == 1
+    when: hostvars['cp0']['grep_cilium']['rc'] == 1
 

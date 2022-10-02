@@ -1,0 +1,16 @@
+---
+- hosts: registry
+  gather_facts: no
+  tasks:
+  - name: Install containerd
+    ansible.builtin.import_tasks: containerd.yaml
+
+  - name: Install docker
+    ansible.builtin.import_tasks: docker.yaml
+
+- name: Create cert
+  ansible.builtin.import_playbook: cert.yaml
+
+- name: Install harbor
+  ansible.builtin.import_playbook: harbor.yaml
+

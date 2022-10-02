@@ -1,5 +1,5 @@
 ---
-- hosts: node0
+- hosts: cp0
   gather_facts: no
   vars_files:
   - vars.yaml
@@ -28,7 +28,7 @@
       cat {{ dir }}/metallb-native.yaml | grep image: | sed "s/image: //; s/ //g" > {{ dir }}/src-images
 
   - name: Login to harbor
-    import_tasks: login-harbor.yaml
+    ansible.builtin.import_tasks: login-harbor.yaml
 
   - name: Pull metallb images
     ansible.builtin.shell: |

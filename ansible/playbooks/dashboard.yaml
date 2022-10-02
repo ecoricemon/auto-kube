@@ -1,5 +1,5 @@
 ---
-- hosts: node0
+- hosts: cp0
   gather_facts: no
   vars_files:
   - vars.yaml
@@ -44,7 +44,7 @@
     when: grep_dashboard['rc'] == 1
 
   - name: Login to harbor
-    import_tasks: login-harbor.yaml
+    ansible.builtin.import_tasks: login-harbor.yaml
     when: grep_dashboard['rc'] == 1
 
   - name: Pull image

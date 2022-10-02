@@ -1,6 +1,6 @@
 ---
 # Initialize cluster
-- hosts: node0
+- hosts: cp0
   gather_facts: yes
   vars_files:
   - vars.yaml
@@ -15,19 +15,20 @@
   - name: Make cluster
     become: yes
     ansible.builtin.shell: >
+      srcrepo=$(kubeadm config print init-defaults | grep imageRepository | sed "s/^imageRepository: //") && \
       kubeadm init \
         --cri-socket "unix:///run/containerd/containerd.sock" \
         --pod-network-cidr "10.244.0.0/16" \
-        --apiserver-advertise-address "{{ hostvars['node0']['ansible_host'] }}" \
-        --image-repository "{{ harbor['prj'] }}/k8s.gcr.io" \
+        --apiserver-advertise-address "{{ hostvars['cp0']['ansible_host'] }}" \
+        --image-repository "{{ harbor['prj'] }}/$srcrepo" \
         --kubernetes-version "{{ kubeadm['cmd_ver'] }}" \
         --skip-phases "addon/kube-proxy"
     register: init
 
   - name: Keep join command
-    ansible.builtin.shell: echo "{{ init.stdout }}" > "{{ dir }}/init"
-
-  - ansible.builtin.shell: cat "{{ dir }}/init" | gawk "NR>=$(cat {{ dir }}/init | grep -n 'kubeadm join' | cut -d ':' -f 1)" > "{{ dir }}/join-cmd"
+    ansible.builtin.shell: |
+      echo "{{ init.stdout }}" > "{{ dir }}/init"
+      cat "{{ dir }}/init" | gawk "NR>=$(cat {{ dir }}/init | grep -n 'kubeadm join' | cut -d ':' -f 1)" > "{{ dir }}/join-cmd"
 
   - name: Copy kube user config
     ansible.builtin.file:
@@ -47,7 +48,7 @@
       group: "{{ ansible_env.USER }}"
 
 # Join the cluster
-- hosts: nodes:!node0
+- hosts: cluster:!cp0
   gather_facts: yes
   vars_files:
   - vars.yaml
@@ -63,7 +64,7 @@
     ansible.posix.synchronize:
       src: "{{ dir }}/join-cmd"
       dest: "{{ dir }}/join-cmd"
-    delegate_to: node0
+    delegate_to: cp0
 
   - name: Join the cluster
     become: yes

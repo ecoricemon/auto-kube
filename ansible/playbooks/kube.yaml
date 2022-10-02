@@ -1,6 +1,6 @@
 ---
 # Install kube
-- hosts: nodes
+- hosts: cluster
   gather_facts: no
   vars_files: 
   - vars.yaml

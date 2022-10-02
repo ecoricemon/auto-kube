@@ -1,6 +1,6 @@
 ---
 # Install and run harbor
-- hosts: node0
+- hosts: registry0
   gather_facts: yes
   vars_files:
   - vars.yaml
@@ -23,7 +23,7 @@
     register: stat_installer
 
   - name: Download harbor installer
-    ansible.builtin.shell: curl -ksLo {{ dir }}/{{ installer }} https://github.com/goharbor/harbor/releases/download/{{ harbor['ver'] }}/{{ installer }} 
+    ansible.builtin.shell: curl -sLo {{ dir }}/{{ installer }} https://github.com/goharbor/harbor/releases/download/{{ harbor['ver'] }}/{{ installer }} 
     when: not stat_installer['stat']['exists']
 
   - name: Check harbor status
@@ -125,15 +125,10 @@
     ansible.builtin.shell: systemctl enable {{ dir }}/harbor.service --now
     when: grep_harbor['rc'] == 1
 
-- hosts: nodes
-  gather_facts: no
-  vars_files:
-  - vars.yaml
-  tasks:
   - name: Append harbor addr in /etc/hosts
-    become: yes
+    become: yes 
     ansible.builtin.blockinfile:
       path: /etc/hosts
       block: |
-        {{ hostvars['node0']['ansible_host'] }} {{ harbor['domain'] }}
+        {{ hostvars['registry0']['ansible_host'] }} {{ harbor['domain'] }}
 

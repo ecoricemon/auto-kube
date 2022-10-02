@@ -1,97 +1,36 @@
 ---
-# Copy crt into containerd path
-- hosts: nodes
-  gather_facts: yes
-  vars_files:
-  - vars.yaml
-  tasks:
-  - name: Copy crt
-    ansible.posix.synchronize:
-      src: "{{ certs['dir'] }}/cert.crt"
-      dest: "{{ ansible_env.HOME }}/cert.crt"
-    delegate_to: node0
+# Install containerd.io
+- ansible.builtin.package_facts:
+    manager: auto
 
-  - name: "Copy crt to /etc/containerd/certs.d/{{ harbor['url'] }}/"
-    become: yes
-    ansible.builtin.copy:
-      remote_src: yes
-      src: "{{ ansible_env.HOME }}/cert.crt"
-      dest: "/etc/containerd/certs.d/{{ harbor['url'] }}/"
-   
-  - name: Remove temporary crt
-    ansible.builtin.file:
-      path: "{{ ansible_env.HOME }}/cert.crt"
-      state: absent
+- name: Install containerd prerequisites
+  become: yes
+  ansible.builtin.apt:
+    update_cache: yes
+    pkg:
+    - ca-certificates
+    - curl
+    - gnupg
+    - lsb-release
+  when: "'containerd.io' not in ansible_facts.packages"
 
-# Get containerd sandbox image
-- hosts: node0
-  gather_facts: no
-  vars_files:
-  - vars.yaml
-  vars:
-  - dir: "{{ containerd['dir'] }}"
-  tasks:
-  - name: Make sure the dir exists
-    ansible.builtin.file:
-      path: "{{ dir }}"
-      state: directory
+- name: Add apt repository
+  become: yes
+  ansible.builtin.shell: |
+    curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor --yes -o /usr/share/keyrings/docker-archive-keyring.gpg
+    echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.gpg] https://download.docker.com/linux/ubuntu $(lsb_release -cs) stable" | tee /etc/apt/sources.list.d/docker.list > /dev/null
+  when: "'containerd.io' not in ansible_facts.packages"
 
-  - name: Login to harbor
-    import_tasks: login-harbor.yaml
+- name: Update apt cache using command
+  become: yes
+  ansible.builtin.shell: apt update
+  when: "'containerd.io' not in ansible_facts.packages"
 
-  - name: Get containerd sandbox image
-    ansible.builtin.shell: |
-      containerd config default | grep sandbox_image | sed 's/.*= //; s/"//g' > "{{ dir }}/src-image"
-      echo "{{ harbor['prj'] }}"/$(cat "{{ dir }}/src-image") > "{{ dir }}/dest-image"
-      src=$(cat "{{ dir }}/src-image")
-      dest=$(cat "{{ dir }}/dest-image")
-      repo=$(echo $dest | sed "s#{{ harbor['url'] }}/##" | cut -d ':' -f 1)
-      tag=$(echo $dest | sed "s#{{ harbor['url'] }}/##" | cut -d ':' -f 2)
-      existtags=$(curl -ksu admin:{{ harbor['pw'] }} https://{{ harbor['url'] }}/v2/$repo/tags/list)
-      if [ -z $(echo $existtags | grep $tag) ]; then
-        docker image pull $src 
-        docker image tag $src $dest 
-        docker image push $dest
-      fi    
-
-# Set containerd
-- hosts: nodes
-  gather_facts: no
-  vars_files:
-  - vars.yaml
-  tasks:
-  - name: Check containerd sandbox repo
-    ansible.builtin.shell: cat /etc/containerd/config.toml | grep "sandbox_image = \"{{ harbor['prj'] }}/"
-    register: grep_sandbox
-    failed_when: grep_sandbox['rc'] == 2
-
-  - name: Set containerd sandbox repo
-    become: yes 
-    ansible.builtin.shell: sed -i "s#sandbox_image = \"#sandbox_image = \"{{ harbor['prj'] }}/#" /etc/containerd/config.toml
-    when: grep_sandbox['rc'] == 1
-
-  - name: Check containerd config path
-    ansible.builtin.shell: cat /etc/containerd/config.toml | grep 'config_path = "/etc/containerd/certs.d'
-    register: grep_config
-    failed_when: grep_config['rc'] == 2
-
-  - name: Set config path in containerd config.toml
-    become: yes
-    ansible.builtin.shell: sed -i 's#config_path = "#config_path = "/etc/containerd/certs.d#' /etc/containerd/config.toml
-    when: grep_config['rc'] == 1
-
-  - name: "Create /etc/containerd/certs.d/{{ harbor['url'] }}/hosts.toml"
-    become: yes
-    ansible.builtin.blockinfile:
-      path: "/etc/containerd/certs.d/{{ harbor['url'] }}/hosts.toml"
-      create: yes
-      block: |
-        server = "https://{{ harbor['url'] }}"
-
-        [host."https://{{ harbor['url'] }}"]
-          ca = "/etc/containerd/certs.d/{{ harbor['url'] }}/cert.crt"
-
-  - name: Restart containerd
-    become: yes
-    ansible.builtin.shell: systemctl restart containerd
+- name: Install container runtime
+  become: yes
+  ansible.builtin.apt:
+    update_cache: yes
+    pkg:
+    - containerd.io
+  when: "'containerd.io' not in ansible_facts.packages"
 

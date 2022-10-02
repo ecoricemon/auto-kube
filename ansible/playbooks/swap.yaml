@@ -1,6 +1,6 @@
 ---
 # Disable swapping on all nodes
-- hosts: nodes
+- hosts: cluster
   gather_facts: no
   tasks:
   - name: Check swapping

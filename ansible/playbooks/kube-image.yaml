@@ -1,6 +1,6 @@
 ---
-# Pull kube images ans push it to harbor
-- hosts: node0
+# Pull containerd sandbox image and kube images and push them to harbor
+- hosts: cp0
   gather_facts: no
   vars_files:
   - vars.yaml
@@ -12,14 +12,19 @@
       path: "{{ dir }}"
       state: directory
 
-  - name: Login to harbor
-    import_tasks: login-harbor.yaml
-
-  - name: Get kube image
+  - name: Collect containerd and kube image names
     ansible.builtin.shell: |
+      containerd config default | grep sandbox_image | sed 's/.*= //; s/"//g' > {{ dir }}/src-images
+      echo {{ harbor['prj'] }}/$(cat {{ dir }}/src-images) > {{ dir }}/dest-images
+      kubeadm config images list --kubernetes-version "{{ kubeadm['cmd_ver'] }}" >> {{ dir }}/src-images
       srcrepo=$(kubeadm config print init-defaults | grep imageRepository | sed "s/^imageRepository: //")
-      kubeadm config images list --kubernetes-version "{{ kubeadm['cmd_ver'] }}" > "{{ dir }}/src-images"
-      kubeadm config images list --kubernetes-version "{{ kubeadm['cmd_ver'] }}" --image-repository "{{ harbor['prj'] }}/$srcrepo" > "{{ dir }}/dest-images"
+      kubeadm config images list --kubernetes-version "{{ kubeadm['cmd_ver'] }}" --image-repository "{{ harbor['prj'] }}/$srcrepo" >> {{ dir }}/dest-images
+
+  - name: Login to harbor
+    ansible.builtin.import_tasks: login-harbor.yaml
+
+  - name: Pull containerd and kube images
+    ansible.builtin.shell: |
       linenum=$(wc -l "{{ dir }}/src-images" | cut -d ' ' -f 1)
       i=1
       while [ $i -le $linenum ]; do

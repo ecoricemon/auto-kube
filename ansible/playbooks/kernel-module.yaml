@@ -1,6 +1,6 @@
 ---
 # Enable overlay & br_netfilter
-- hosts: nodes
+- hosts: cluster
   gather_facts: no
   tasks:
   - name: Check kernel module conf file

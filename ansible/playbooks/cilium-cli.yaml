@@ -1,5 +1,5 @@
 ---
-- hosts: node0
+- hosts: cp0
   gather_facts: yes
   vars_files:
   - vars.yaml

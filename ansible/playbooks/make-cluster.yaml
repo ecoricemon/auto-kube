@@ -1,31 +1,37 @@
 ---
-# Get kube image
-- import_playbook: kube-image.yaml
+- name: Pull kube images
+  ansible.builtin.import_playbook: kube-image.yaml
 
-# Clean first
-- import_playbook: cluster-reset.yaml
+- name: Clean first
+  ansible.builtin.import_playbook: cluster-reset.yaml
 
-# Initialize cluter
-- import_playbook: cluster-init.yaml
+- name: Generate ssh key for sync
+  ansible.builtin.import_playbook: ssh.yaml
+  vars:
+    key_send: cp0
+    key_recv: cluster:!cp0
 
-# Install helm
-- import_playbook: helm.yaml
+- name: Initialize cluter
+  ansible.builtin.import_playbook: cluster-init.yaml
 
-# Install cilium
-- import_playbook: cilium.yaml
+- name: Install helm
+  ansible.builtin.import_playbook: helm.yaml
 
-# Install cilium CLI
-- import_playbook: cilium-cli.yaml
+- name: Install cilium
+  ansible.builtin.import_playbook: cilium.yaml
 
-# Install metallb
-- import_playbook: metallb.yaml
+- name: Install cilium CLI
+  ansible.builtin.import_playbook: cilium-cli.yaml
 
-# Configure metallb
-- import_playbook: metallb-conf.yaml
+- name: Install metallb
+  ansible.builtin.import_playbook: metallb.yaml
 
-# Install dashboard
-- import_playbook: dashboard.yaml
+- name: Configure metallb
+  ansible.builtin.import_playbook: metallb-conf.yaml
 
-# Configure dashboard
-- import_playbook: dashboard-conf.yaml
+- name: Install dashboard
+  ansible.builtin.import_playbook: dashboard.yaml
+
+- name: Configure dashboard
+  ansible.builtin.import_playbook: dashboard-conf.yaml
 

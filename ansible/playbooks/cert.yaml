@@ -1,6 +1,6 @@
 ---
 # Create cert
-- hosts: node0
+- hosts: registry0
   gather_facts: yes
   vars_files:
   - vars.yaml
@@ -33,7 +33,7 @@
       block: |
         [default]
         subjectAltName = \
-          IP:{{ hostvars['node0']['ansible_host'] }}, \
+          IP:{{ hostvars['registry0']['ansible_host'] }}, \
           DNS:{{ harbor['domain'] }}
     when: certfiles.matched != 2
 
