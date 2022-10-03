@@ -1,7 +1,7 @@
 ---
 # For synchronize
 # Generate ssh key
-- hosts: "{{ key_send }}"
+- hosts: "{{ key_sender }}"
   gather_facts: no
   tasks:
   - name: Check id_rsa and id_rsa.pub
@@ -21,7 +21,7 @@
       flat: yes
 
 # Copy ssh key
-- hosts: "{{ key_recv }}"
+- hosts: "{{ key_receiver }}"
   gather_facts: no
   tasks:
   - name: Copy ssh key to nodes
@@ -52,7 +52,7 @@
       state: absent
 
 # Create known hosts file
-- hosts: "{{ key_send }}"
+- hosts: "{{ key_sender }}"
   gather_facts: no
   tasks:
   - name: Make sure ~/.ssh/known_hosts exists
@@ -67,7 +67,7 @@
 
   - name: Check key in the known_hosts
     ansible.builtin.shell: ssh-keygen -F "{{ hostvars[item]['ansible_host'] }}" 2>/dev/null
-    loop: "{{ query('inventory_hostnames', key_recv) }}"
+    loop: "{{ query('inventory_hostnames', key_receiver) }}"
     register: keys
     failed_when: keys.rc == 255
 

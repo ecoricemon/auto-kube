@@ -1,0 +1,175 @@
+---
+- hosts: git0
+  gather_facts: yes
+  vars_files:
+  - vars.yaml
+  vars:
+  - dir: "{{ gitea['dir'] }}"
+  tasks:
+  - name: Make sure the dirs exist
+    ansible.builtin.file:
+      path: "{{ item }}"
+      state: directory
+    loop:
+    - "{{ dir }}/gitea"
+    - "{{ dir }}/postgres"
+    - "{{ dir }}/nginx/certs"
+    - "{{ dir }}/nginx/tmp"
+
+  - name: Make gitea, db, and proxy image names
+    ansible.builtin.shell: |
+      echo gitea/gitea:{{ gitea['ver'] }} > {{ dir }}/src-images
+      echo postgres:{{ gitea['pg_ver'] }} >> {{ dir }}/src-images
+      echo nginx:{{ gitea['nginx_ver'] }} >> {{ dir }}/src-images
+      sed "s#^#{{ harbor['prj'] }}/#" {{ dir }}/src-images > {{ dir }}/dest-images
+
+  - name: Login to harbor
+    ansible.builtin.import_tasks: login-harbor.yaml
+
+  - name: Pull gitea, db, and proxy images
+    ansible.builtin.shell: |
+      linenum=$(wc -l {{ dir }}/src-images | cut -d ' ' -f 1)
+      i=1 
+      while [ $i -le $linenum ]; do
+        src=$(sed "$i!d;q" {{ dir }}/src-images)
+        dest=$(sed "$i!d;q" {{ dir }}/dest-images)
+        repo=$(echo $dest | sed "s#{{ harbor['url'] }}/##" | cut -d ':' -f 1)
+        tag=$(echo $dest | sed "s#{{ harbor['url'] }}/##" | cut -d ':' -f 2)
+        existtags=$(curl -ksu admin:{{ harbor['pw'] }} https://{{ harbor['url'] }}/v2/$repo/tags/list)
+        if [ -z $(echo $existtags | grep $tag) ]; then
+          docker image pull $src
+          docker image tag $src $dest
+          docker image push $dest
+        fi
+        i=$((i+1))
+      done
+
+  - name: Make nginx.conf
+    ansible.builtin.blockinfile:
+      path: "{{ dir }}/nginx/nginx.conf"
+      create: yes
+      block: |
+        user              nginx;
+        worker_processes  auto;
+        error_log         /var/log/nginx/error.log notice;
+        pid               /tmp/nginx.pid;
+
+        events {
+          worker_connections  1024;
+        }
+
+        http {
+          client_body_temp_path  /tmp/client_temp;
+          proxy_temp_path        /tmp/proxy_temp_path;
+          fastcgi_temp_path      /tmp/fastcgi_temp;
+          uwsgi_temp_path        /tmp/uwsgi_temp;
+          scgi_temp_path         /tmp/scgi_temp;
+
+          upstream gitea_backend {
+            server  gitea:8080;
+          }   
+
+          server {
+            listen               8443 ssl;
+            keepalive_timeout    70;
+            ssl_session_cache    shared:SSL:10m;
+            ssl_session_timeout  10m;
+            ssl_certificate      /etc/nginx/certs/cert.crt;
+            ssl_certificate_key  /etc/nginx/certs/cert.key;
+            ssl_protocols        TLSv1.2 TLSv1.3;
+            ssl_ciphers          TLS_AES_256_GCM_SHA384:TLS_AES_128_GCM_SHA256:TLS_CHACHA20_POLY1305_SHA256:ECDHE-ECDSA-AES128-GCM-SHA256:ECDHE-RSA-AES128-GCM-SHA256:ECDHE-ECDSA-AES256-GCM-SHA384:ECDHE-RSA-AES256-GCM-SHA384:ECDHE-ECDSA-CHACHA20-POLY1305:ECDHE-RSA-CHACHA20-POLY1305:DHE-RSA-AES128-GCM-SHA256:DHE-RSA-AES256-GCM-SHA384; # Reference: https://wiki.mozilla.org/Security/Server_Side_TLS
+ 
+            location / { 
+              proxy_pass        http://gitea_backend;
+              proxy_set_header  Host $host;
+              proxy_set_header  X-Real-IP $remote_addr;
+              proxy_set_header  X-Forwarded-For $proxy_add_x_forwarded_for;
+              proxy_set_header  X-Forwarded-Proto $scheme;
+            }
+          }   
+        }
+
+  - name: Make gitea docker compose file
+    ansible.builtin.blockinfile:
+      path: "{{ dir }}/docker-compose.yaml"
+      create: yes
+      block: |
+        version: "3"
+        networks:
+          gitea_net:
+            external: false
+        services:
+          proxy:
+            container_name: gitea_proxy
+            image: {{ harbor['prj'] }}/nginx:{{ gitea['nginx_ver'] }}
+            restart: always
+            networks:
+            - gitea_net
+            volumes:
+            - {{ dir }}/nginx/nginx.conf:/etc/nginx/nginx.conf
+            - {{ dir }}/nginx/certs:/etc/nginx/certs
+            - {{ dir }}/nginx/tmp:/tmp
+            ports:
+            - {{ gitea['port'] }}:8443
+            depends_on:
+            - gitea
+          gitea:
+            container_name: gitea
+            image: {{ harbor['prj'] }}/gitea/gitea:{{ gitea['ver'] }}
+            restart: always
+            environment:
+            - USER_UID={{ ansible_facts['effective_user_id'] }}
+            - USER_GID={{ ansible_facts['effective_group_id'] }}
+            - GITEA__database__DB_TYPE=postgres
+            - GITEA__database__HOST=db:5432
+            - GITEA__database__NAME=gitea
+            - GITEA__database__USER=gitea
+            - GITEA__database__PASSWD=gitea
+            - GITEA__server__PROTOCOL=http
+            - GITEA__server__DOMAIN=gitea
+            - GITEA__server__HTTP_PORT=8080
+            - GITEA__server__ROOT_URL=https://{{ gitea['url'] }}
+            - GITEA__server__OFFLINE_MODE=true
+            networks:
+            - gitea_net
+            volumes:
+            - {{ dir }}/gitea:/data
+            - /etc/timezone:/etc/timezone:ro
+            - /etc/localtime:/etc/localtime:ro
+            depends_on:
+            - db
+          db:
+            container_name: gitea_db
+            image: {{ harbor['prj'] }}/postgres:{{ gitea['pg_ver'] }}
+            restart: always
+            environment:
+            - POSTGRES_USER=gitea
+            - POSTGRES_PASSWORD=gitea
+            - POSTGRES_DB=gitea
+            networks:
+            - gitea_net
+            volumes:
+            - {{ dir }}/postgres:/var/lib/postgresql/data
+
+  - name: Check gitea
+    ansible.builtin.shell: docker compose -f .kube-ansible/gitea/docker-compose.yaml ps --format json | jq length
+    register: gitea_num
+
+  - name: Copy cert into the gitea proxy dir
+    ansible.builtin.copy:
+      remote_src: yes
+      src: "{{ item }}"
+      dest: "{{ dir }}/nginx/certs/"
+    loop:
+    - "{{ dir }}/certs/cert.crt"
+    - "{{ dir }}/certs/cert.key"
+    when: gitea_num['stdout'] != "3"
+
+  - name: Shut down gitea if it's not running
+    ansible.builtin.shell: docker compose -f {{ dir }}/docker-compose.yaml down
+    when: gitea_num['stdout'] != "3"
+
+  - name: Run gitea
+    ansible.builtin.shell: docker compose -f {{ dir }}/docker-compose.yaml up -d
+    when: gitea_num['stdout'] != "3"
+

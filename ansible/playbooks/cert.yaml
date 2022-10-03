@@ -1,43 +1,36 @@
 ---
-# Create cert
-- hosts: registry0
-  gather_facts: yes
-  vars_files:
-  - vars.yaml
-  vars:
-  - dir: "{{ certs['dir'] }}"
-  tasks:
-  - name: Make sure the dir exists
-    ansible.builtin.file:
-      path: "{{ dir }}"
-      state: directory
+# Generate cert
+- name: Make sure the dir exists
+  ansible.builtin.file:
+    path: "{{ dir }}"
+    state: directory
 
-  - name: Check cert.key and cert.crt
-    ansible.builtin.find:
-      paths: "{{ dir }}"
-      patterns: 'cert.key,cert.crt'
-    register: certfiles
+- name: Check cert.key and cert.crt
+  ansible.builtin.find:
+    paths: "{{ dir }}"
+    patterns: 'cert.key,cert.crt'
+  register: certfiles
 
-  - name: Create cert.key
-    ansible.builtin.shell: openssl genrsa -out {{ dir }}/cert.key 2048
-    when: certfiles['matched'] != 2
+- name: Generate cert.key
+  ansible.builtin.shell: openssl genrsa -out {{ dir }}/cert.key 2048
+  when: certfiles['matched'] != 2
 
-  - name: Create cert.csr
-    ansible.builtin.shell: openssl req -new -key {{ dir }}/cert.key -out {{ dir }}/cert.csr -subj "/C=KR/O=Organization/CN={{ harbor['domain'] }}"
-    when: certfiles['matched'] != 2
+- name: Generate cert.csr
+  ansible.builtin.shell: openssl req -new -key {{ dir }}/cert.key -out {{ dir }}/cert.csr -subj "/C=KR/O=Organization/CN={{ cn }}"
+  when: certfiles['matched'] != 2
 
-  - name: Create cert.ext
-    ansible.builtin.blockinfile:
-      path: "{{ dir }}/cert.ext"
-      create: yes
-      block: |
-        [default]
-        subjectAltName = \
-          IP:{{ hostvars['registry0']['ansible_host'] }}, \
-          DNS:{{ harbor['domain'] }}
-    when: certfiles.matched != 2
+- name: Generate cert.ext
+  ansible.builtin.blockinfile:
+    path: "{{ dir }}/cert.ext"
+    create: yes
+    block: |
+      [default]
+      subjectAltName = \
+        IP:{{ ip }}, \
+        DNS:{{ dns }}
+  when: certfiles.matched != 2
 
-  - name: Create cert.crt
-    ansible.builtin.shell: openssl x509 -req -days 36500 -in {{ dir }}/cert.csr -signkey {{ dir }}/cert.key -extfile {{ dir }}/cert.ext -out {{ dir }}/cert.crt
-    when: certfiles.matched != 2
+- name: Generate cert.crt
+  ansible.builtin.shell: openssl x509 -req -days 36500 -in {{ dir }}/cert.csr -signkey {{ dir }}/cert.key -extfile {{ dir }}/cert.ext -out {{ dir }}/cert.crt
+  when: certfiles.matched != 2
 

@@ -61,25 +61,15 @@
       sed -Ei "s/^(harbor_admin_password:) ([a-zA-Z0-9]+)/\1 {{ harbor['pw'] }}/" {{ dir }}/harbor/harbor.yml
     when: grep_harbor['rc'] == 1
 
-  - name: Copy cert into the harbor dir
-    ansible.builtin.copy:
-      remote_src: yes
-      src: "{{ item }}"
-      dest: "{{ dir }}/certs/"
-    loop:
-    - "{{ certs['dir'] }}/cert.crt"
-    - "{{ certs['dir'] }}/cert.key"
-    when: grep_harbor['rc'] == 1
-
   - name: Copy cert into the docker dir
     become: yes
     ansible.builtin.copy:
       remote_src: yes
-      src: "{{ certs['dir'] }}/cert.crt"
+      src: "{{ harbor['dir'] }}/certs/cert.crt"
       dest: "/etc/docker/certs.d/{{ harbor['url'] }}/"
     when: grep_harbor['rc'] == 1
 
-  # Some harbor containers may fall into exited states because of its dependencies after reboot
+  # Some harbor containers may fall into exited states after reboot because of its order dependencies
   # So, make a systemd unit and use it on reboot
   - name: Disable running harbor in the install script
     ansible.builtin.shell: sed -i "s/\$DOCKER_COMPOSE up/#\$DOCKER_COMPOSE up/" {{ dir }}/harbor/install.sh

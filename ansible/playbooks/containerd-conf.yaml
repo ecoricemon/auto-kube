@@ -34,7 +34,7 @@
 
   - name: Copy crt
     ansible.posix.synchronize:
-      src: "{{ certs['dir'] }}/cert.crt"
+      src: "{{ harbor['dir'] }}/certs/cert.crt"
       dest: "{{ ansible_env.HOME }}/cert.crt"
     delegate_to: registry0
 

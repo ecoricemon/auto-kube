@@ -8,9 +8,35 @@
   - name: Install docker
     ansible.builtin.import_tasks: docker.yaml
 
-- name: Create cert
-  ansible.builtin.import_playbook: cert.yaml
+- hosts: registry0
+  gather_facts: yes
+  vars_files:
+  - vars.yaml
+  vars:
+  - dir: "{{ harbor['dir'] }}/certs"
+  - cn: "{{ harbor['domain'] }}"
+  - ip: "{{ hostvars['registry0']['ansible_host'] }}"
+  - dns: "{{ harbor['domain'] }}"
+  tasks:
+  - name: Generate cert for harbor
+    ansible.builtin.import_tasks: cert.yaml
 
 - name: Install harbor
   ansible.builtin.import_playbook: harbor.yaml
+
+- hosts: git0
+  gather_facts: yes
+  vars_files:
+  - vars.yaml
+  vars:
+  - dir: "{{ gitea['dir'] }}/certs"
+  - cn: "{{ gitea['domain'] }}"
+  - ip: "{{ hostvars['git0']['ansible_host'] }}"
+  - dns: "{{ gitea['domain'] }}"
+  tasks:
+  - name: Generate cert for gitea
+    ansible.builtin.import_tasks: cert.yaml
+
+- name: Install gitea
+  ansible.builtin.import_playbook: gitea.yaml
 
