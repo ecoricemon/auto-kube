@@ -16,34 +16,6 @@
     - "{{ dir }}/nginx/certs"
     - "{{ dir }}/nginx/tmp"
 
-  - name: Make gitea, db, and proxy image names
-    ansible.builtin.shell: |
-      echo gitea/gitea:{{ gitea['ver'] }} > {{ dir }}/src-images
-      echo postgres:{{ gitea['pg_ver'] }} >> {{ dir }}/src-images
-      echo nginx:{{ gitea['nginx_ver'] }} >> {{ dir }}/src-images
-      sed "s#^#{{ harbor['prj'] }}/#" {{ dir }}/src-images > {{ dir }}/dest-images
-
-  - name: Login to harbor
-    ansible.builtin.import_tasks: login-harbor.yaml
-
-  - name: Pull gitea, db, and proxy images
-    ansible.builtin.shell: |
-      linenum=$(wc -l {{ dir }}/src-images | cut -d ' ' -f 1)
-      i=1 
-      while [ $i -le $linenum ]; do
-        src=$(sed "$i!d;q" {{ dir }}/src-images)
-        dest=$(sed "$i!d;q" {{ dir }}/dest-images)
-        repo=$(echo $dest | sed "s#{{ harbor['url'] }}/##" | cut -d ':' -f 1)
-        tag=$(echo $dest | sed "s#{{ harbor['url'] }}/##" | cut -d ':' -f 2)
-        existtags=$(curl -ksu admin:{{ harbor['pw'] }} https://{{ harbor['url'] }}/v2/$repo/tags/list)
-        if [ -z $(echo $existtags | grep $tag) ]; then
-          docker image pull $src
-          docker image tag $src $dest
-          docker image push $dest
-        fi
-        i=$((i+1))
-      done
-
   - name: Make nginx.conf
     ansible.builtin.blockinfile:
       path: "{{ dir }}/nginx/nginx.conf"
@@ -101,7 +73,7 @@
         services:
           proxy:
             container_name: gitea_proxy
-            image: {{ harbor['prj'] }}/nginx:{{ gitea['nginx_ver'] }}
+            image: nginx:{{ gitea['nginx_ver'] }}
             restart: always
             networks:
             - gitea_net
@@ -115,7 +87,7 @@
             - gitea
           gitea:
             container_name: gitea
-            image: {{ harbor['prj'] }}/gitea/gitea:{{ gitea['ver'] }}
+            image: gitea/gitea:{{ gitea['ver'] }}
             restart: always
             environment:
             - USER_UID={{ ansible_facts['effective_user_id'] }}
@@ -140,7 +112,7 @@
             - db
           db:
             container_name: gitea_db
-            image: {{ harbor['prj'] }}/postgres:{{ gitea['pg_ver'] }}
+            image: postgres:{{ gitea['pg_ver'] }}
             restart: always
             environment:
             - POSTGRES_USER=gitea
@@ -152,7 +124,7 @@
             - {{ dir }}/postgres:/var/lib/postgresql/data
 
   - name: Check gitea
-    ansible.builtin.shell: docker compose -f .kube-ansible/gitea/docker-compose.yaml ps --format json | jq length
+    ansible.builtin.shell: docker compose -f {{ dir }}/docker-compose.yaml ps --format json | jq length
     register: gitea_num
 
   - name: Copy cert into the gitea proxy dir
@@ -172,4 +144,16 @@
   - name: Run gitea
     ansible.builtin.shell: docker compose -f {{ dir }}/docker-compose.yaml up -d
     when: gitea_num['stdout'] != "3"
+
+- hosts: dns0
+  gather_facts: no
+  vars_files:
+  - vars.yaml
+  tasks:
+  - name: Append gitea addr to the coredns hosts file
+    ansible.builtin.shell: |
+      grep "{{ gitea['domain'] }}" {{ coredns['hosts'] }}
+      if [ $? != 0 ]; then
+        echo {{ hostvars['git0']['ansible_host'] }} {{ gitea['domain'] }} >> {{ coredns['hosts'] }}
+      fi
 

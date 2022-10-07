@@ -1,7 +1,7 @@
 ---
 # Install and run harbor
 - hosts: registry0
-  gather_facts: yes
+  gather_facts: no
   vars_files:
   - vars.yaml
   vars:
@@ -103,8 +103,8 @@
         
         [Service]
         Type=simple
-        ExecStart=/usr/bin/docker compose -f /home/kube/.kube-ansible/harbor/harbor/docker-compose.yml up
-        ExecStop=/usr/bin/docker compose -f /home/kube/.kube-ansible/harbor/harbor/docker-compose.yml down
+        ExecStart=/usr/bin/docker compose -f {{ dir }}/harbor/docker-compose.yml up
+        ExecStop=/usr/bin/docker compose -f {{ dir }}/harbor/docker-compose.yml down
         
         [Install]
         WantedBy=multi-user.target
@@ -115,10 +115,15 @@
     ansible.builtin.shell: systemctl enable {{ dir }}/harbor.service --now
     when: grep_harbor['rc'] == 1
 
-  - name: Append harbor addr in /etc/hosts
-    become: yes 
-    ansible.builtin.blockinfile:
-      path: /etc/hosts
-      block: |
-        {{ hostvars['registry0']['ansible_host'] }} {{ harbor['domain'] }}
+- hosts: dns0
+  gather_facts: no
+  vars_files:
+  - vars.yaml
+  tasks:
+  - name: Append harbor addr to the coredns hosts file
+    ansible.builtin.shell: |
+      grep "{{ harbor['domain'] }}" {{ coredns['hosts'] }}
+      if [ $? != 0 ]; then
+        echo {{ hostvars['registry0']['ansible_host'] }} {{ harbor['domain'] }} >> {{ coredns['hosts'] }}
+      fi
 

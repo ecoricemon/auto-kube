@@ -62,10 +62,17 @@
     become: yes
     ansible.builtin.shell: systemctl restart containerd
 
-  - name: Append harbor addr in /etc/hosts
+  - name: Make systemd-resolved configuraion dir
+    become: yes
+    ansible.builtin.file:
+      path: /etc/systemd/resolved.conf.d
+      state: directory
+
+  - name: Append systemd-resolved configuration for coredns
     become: yes 
     ansible.builtin.blockinfile:
-      path: /etc/hosts
+      path: /etc/systemd/resolved.conf.d/coredns.conf
       block: |
-        {{ hostvars['registry0']['ansible_host'] }} {{ harbor['domain'] }}
+        [Resolve]
+        DNS={{ hostvars['dns0']['ansible_host'] }}
 

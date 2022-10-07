@@ -4,7 +4,7 @@ base:
   kube:
     ver: 1.24.6
   harbor:
-    domain: registry.org
+    domain: registry.dn.tld
     port: 10443
     ver: 2.6.0
     pw: admin
@@ -14,6 +14,8 @@ base:
     ver: 1.17.2
     pg_ver: 14
     nginx_ver: 1.23.1
+  coredns:
+    ver: 1.8.7
   cilium:
     cli:
       ver: 0.12.4
@@ -57,6 +59,12 @@ gitea:
   url: "{{ base['gitea']['domain'] }}:{{ base['gitea']['port'] }}"
   pg_ver: "{{ base['gitea']['pg_ver'] }}"
   nginx_ver: "{{ base['gitea']['nginx_ver'] }}"
+
+coredns:
+  dir: "{{ base['dir'] }}/coredns"
+  data: "{{ base['dir'] }}/coredns/data"
+  hosts: "{{ base['dir'] }}/coredns/data/hosts"
+  ver: "{{ base['coredns']['ver'] }}"
 
 cilium:
   dir: "{{ base['dir'] }}/cilium"

@@ -8,6 +8,9 @@
   - name: Install docker
     ansible.builtin.import_tasks: docker.yaml
 
+- name: Install coredns
+  ansible.builtin.import_playbook: coredns.yaml
+
 - hosts: registry0
   gather_facts: yes
   vars_files:

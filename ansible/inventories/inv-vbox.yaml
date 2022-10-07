@@ -25,9 +25,17 @@ git:
       ansible_user: kube
       ansible_ssh_common_args: "-J kube@localhost:8022"
 
+dns:
+  hosts:
+    dns0:
+      ansible_host: 10.0.3.9
+      ansible_user: kube
+      ansible_ssh_common_args: "-J kube@localhost:8022"
+
 all:
   children:
     cluster:
     registry:
-    scm:
+    git:
+    dns:
 
