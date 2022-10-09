@@ -23,7 +23,7 @@
     ansible.builtin.shell: |
       if [ ! -L "/etc/resolv.conf.backup" ]; then
         mv /etc/resolv.conf /etc/resolv.conf.backup
-        echo "nameserver 127.0.0.1" > {{ dir }}/resolv.conf
+        echo "nameserver {{ hostvars['dns0']['ansible_host'] }}" > {{ dir }}/resolv.conf
         ln -rsf {{ dir }}/resolv.conf /etc/resolv.conf
       fi
 
@@ -65,8 +65,12 @@
             image: coredns/coredns:{{ coredns['ver'] }}
             restart: always
             ports:
-            - 53:53
-            - 53:53/udp
+            # Specify interface
+            # If this is omitted, the src IP in the response couldn't be DNS IP when it received the request over other interfaces, (e.g. lo)
+            # This can cause rejection at client side
+            # See iptables -t nat -L -n
+            - {{ hostvars['dns0']['ansible_host'] }}:53:53/tcp
+            - {{ hostvars['dns0']['ansible_host'] }}:53:53/udp
             volumes:
             - {{ coredns['data'] }}/:/data
             command: -conf /data/Corefile
