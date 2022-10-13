@@ -1,5 +1,17 @@
 ---
 - hosts: git0
+  gather_facts: yes 
+  vars_files:
+  - vars.yaml
+  vars:
+  - dir: "{{ gitea['dir'] }}/certs"
+  - cn: "{{ gitea['domain'] }}"
+  - dns: "{{ gitea['domain'] }}"
+  tasks:
+  - name: Generate cert for gitea
+    ansible.builtin.import_tasks: cert.yaml
+
+- hosts: git0
   gather_facts: yes
   vars_files:
   - vars.yaml
@@ -15,6 +27,15 @@
     - "{{ dir }}/postgres"
     - "{{ dir }}/nginx/certs"
     - "{{ dir }}/nginx/tmp"
+
+  - name: Copy cert into the gitea proxy dir
+    ansible.builtin.copy:
+      remote_src: yes
+      src: "{{ item }}"
+      dest: "{{ dir }}/nginx/certs/"
+    loop:
+    - "{{ dir }}/certs/cert.crt"
+    - "{{ dir }}/certs/cert.key"
 
   - name: Make nginx.conf
     ansible.builtin.blockinfile:
@@ -100,7 +121,7 @@
             - GITEA__server__PROTOCOL=http
             - GITEA__server__DOMAIN=gitea
             - GITEA__server__HTTP_PORT=8080
-            - GITEA__server__ROOT_URL=https://{{ gitea['url'] }}
+            - GITEA__server__ROOT_URL=https://{{ gitea['external'] }}
             - GITEA__server__OFFLINE_MODE=true
             networks:
             - gitea_net
@@ -123,19 +144,20 @@
             volumes:
             - {{ dir }}/postgres:/var/lib/postgresql/data
 
+  - ansible.builtin.package_facts:
+      manager: auto
+
+  - name: Install jq to parse json
+    become: yes
+    ansible.builtin.apt:
+      update_cache: yes
+      pkg:
+      - jq
+    when: "'jq' not in ansible_facts.packages"
+
   - name: Check gitea
     ansible.builtin.shell: docker compose -f {{ dir }}/docker-compose.yaml ps --format json | jq length
     register: gitea_num
-
-  - name: Copy cert into the gitea proxy dir
-    ansible.builtin.copy:
-      remote_src: yes
-      src: "{{ item }}"
-      dest: "{{ dir }}/nginx/certs/"
-    loop:
-    - "{{ dir }}/certs/cert.crt"
-    - "{{ dir }}/certs/cert.key"
-    when: gitea_num['stdout'] != "3"
 
   - name: Shut down gitea if it's not running
     ansible.builtin.shell: docker compose -f {{ dir }}/docker-compose.yaml down
@@ -152,8 +174,19 @@
   tasks:
   - name: Append gitea addr to the coredns hosts file
     ansible.builtin.shell: |
-      grep "{{ gitea['domain'] }}" {{ coredns['hosts'] }}
+      grep -E "([0-9]{1,3}.){3}[0-9]{1,3}[ $(echo -e '\t')]+{{ gitea['domain'] }}" {{ coredns['hosts'] }}
       if [ $? != 0 ]; then
         echo {{ hostvars['git0']['ansible_host'] }} {{ gitea['domain'] }} >> {{ coredns['hosts'] }}
       fi
+      grep -E "([0-9]{1,3}.){3}[0-9]{1,3}[ $(echo -e '\t')]+{{ gitea['external'] }}" {{ coredns['hosts'] }}
+      if [ $? != 0 ]; then
+        echo {{ hostvars['proxy0']['ansible_host'] }} {{ gitea['external'] }} >> {{ coredns['hosts'] }}
+      fi
+
+- name: Connect gitea git server to envoy proxy
+  ansible.builtin.import_playbook: connect-proxy.yaml
+  vars:
+    domain: "{{ gitea['domain'] }}"
+    portnum: "{{ gitea['port'] }}"
+    external: "{{ gitea['external'] }}"
 

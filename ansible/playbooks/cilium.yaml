@@ -39,10 +39,10 @@
 
   - name: Collect cilium image names
     ansible.builtin.shell: |
-      sed -Ei "s/(^[ \t]*tag: [a-zA-Z0-9\".]*)@([a-zA-Z0-9:]*)/\1/" {{ dir }}/cilium/values.yaml
+      sed -Ei "s/(^[ $(echo -e '\t')]*tag: [a-zA-Z0-9\".]*)@([a-zA-Z0-9:]*)/\1/" {{ dir }}/cilium/values.yaml
       sed -i "s/useDigest: true/useDigest: false/" {{ dir }}/cilium/values.yaml
       helm template cilium {{ dir }}/cilium -n kube-system > {{ dir }}/rendered.yaml
-      cat {{ dir }}/rendered.yaml | grep -E "^[ \t]*image:" | sed "s/[ \t]*image: //; s/\"//g" > {{ dir }}/src-images
+      cat {{ dir }}/rendered.yaml | grep -E "^[ $(echo -e '\t')]*image:" | sed "s/[ $(echo -e '\t')]*image: //; s/\"//g" > {{ dir }}/src-images
     when: grep_cilium['rc'] == 1
 
   - name: Login to harbor

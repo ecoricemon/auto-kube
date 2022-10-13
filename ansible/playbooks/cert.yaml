@@ -15,6 +15,11 @@
   ansible.builtin.shell: openssl genrsa -out {{ dir }}/cert.key 2048
   when: certfiles['matched'] != 2
 
+- name: Change cert.key permissions
+  ansible.builtin.file:
+    path: "{{ dir }}/cert.key"
+    mode: 0664
+
 - name: Generate cert.csr
   ansible.builtin.shell: openssl req -new -key {{ dir }}/cert.key -out {{ dir }}/cert.csr -subj "/C=KR/O=Organization/CN={{ cn }}"
   when: certfiles['matched'] != 2
@@ -26,7 +31,6 @@
     block: |
       [default]
       subjectAltName = \
-        IP:{{ ip }}, \
         DNS:{{ dns }}
   when: certfiles.matched != 2
 

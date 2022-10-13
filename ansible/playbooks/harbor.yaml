@@ -1,6 +1,18 @@
 ---
 # Install and run harbor
 - hosts: registry0
+  gather_facts: yes 
+  vars_files:
+  - vars.yaml
+  vars:
+  - dir: "{{ harbor['dir'] }}/certs"
+  - cn: "{{ harbor['domain'] }}"
+  - dns: "{{ harbor['domain'] }}"
+  tasks:
+  - name: Generate cert for harbor
+    ansible.builtin.import_tasks: cert.yaml
+
+- hosts: registry0
   gather_facts: no
   vars_files:
   - vars.yaml
@@ -8,12 +20,18 @@
   - dir: "{{ harbor['dir'] }}"
   - installer: "harbor-offline-installer-{{ harbor['ver'] }}.tgz"
   tasks:
+  - name: Copy cert into the docker dir
+    become: yes
+    ansible.builtin.copy:
+      remote_src: yes
+      src: "{{ dir }}/certs/cert.crt"
+      dest: "/etc/docker/certs.d/{{ harbor['url'] }}/"
+
   - name: Make sure the dirs exist
     ansible.builtin.file:
       path: "{{ item }}"
       state: directory
     loop:
-    - "{{ dir }}/certs"
     - "{{ dir }}/data"
     - "{{ dir }}/log"
 
@@ -57,16 +75,8 @@
       sed -Ei "s#(certificate:) ([a-zA-Z0-9/\.]+)#\1 {{ dir }}/certs/cert.crt#" {{ dir }}/harbor/harbor.yml
       sed -Ei "s#(private_key:) ([a-zA-Z0-9/\.]+)#\1 {{ dir }}/certs/cert.key#" {{ dir }}/harbor/harbor.yml
       sed -Ei "s#^(data_volume:) ([a-zA-Z0-9/\.]+)#\1 {{ dir }}/data#" {{ dir }}/harbor/harbor.yml
-      sed -Ei "s#^([ \t]*location:) ([a-zA-Z0-9/\.]+)#\1 {{ dir }}/log#" {{ dir }}/harbor/harbor.yml
+      sed -Ei "s#^([ $(echo -e '\t')]*location:) ([a-zA-Z0-9/\.]+)#\1 {{ dir }}/log#" {{ dir }}/harbor/harbor.yml
       sed -Ei "s/^(harbor_admin_password:) ([a-zA-Z0-9]+)/\1 {{ harbor['pw'] }}/" {{ dir }}/harbor/harbor.yml
-    when: grep_harbor['rc'] == 1
-
-  - name: Copy cert into the docker dir
-    become: yes
-    ansible.builtin.copy:
-      remote_src: yes
-      src: "{{ harbor['dir'] }}/certs/cert.crt"
-      dest: "/etc/docker/certs.d/{{ harbor['url'] }}/"
     when: grep_harbor['rc'] == 1
 
   # Some harbor containers may fall into exited states after reboot because of its order dependencies
@@ -122,8 +132,19 @@
   tasks:
   - name: Append harbor addr to the coredns hosts file
     ansible.builtin.shell: |
-      grep "{{ harbor['domain'] }}" {{ coredns['hosts'] }}
+      grep -E "([0-9]{1,3}.){3}[0-9]{1,3}[ $(echo -e '\t')]+{{ harbor['domain'] }}" {{ coredns['hosts'] }}
       if [ $? != 0 ]; then
         echo {{ hostvars['registry0']['ansible_host'] }} {{ harbor['domain'] }} >> {{ coredns['hosts'] }}
       fi
+      grep -E "([0-9]{1,3}.){3}[0-9]{1,3}[ $(echo -e '\t')]+{{ harbor['external'] }}" {{ coredns['hosts'] }}
+      if [ $? != 0 ]; then
+        echo {{ hostvars['proxy0']['ansible_host'] }} {{ harbor['external'] }} >> {{ coredns['hosts'] }}
+      fi
+
+- name: Connect harbor registry to envoy proxy
+  ansible.builtin.import_playbook: connect-proxy.yaml
+  vars:
+    domain: "{{ harbor['domain'] }}"
+    portnum: "{{ harbor['port'] }}"
+    external: "{{ harbor['external'] }}"
 

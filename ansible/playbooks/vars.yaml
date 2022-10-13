@@ -1,21 +1,25 @@
 ---
 base:
   dir: "/home/{{ ansible_user }}/.kube-ansible"
-  kube:
-    ver: 1.24.6
+  coredns:
+    ver: 1.8.7
+  envoy:
+    domain: dn.tld
+    ver: 1.23.1
+    admin_port: 10001
   harbor:
-    domain: registry.dn.tld
+    domain: harbor.registry
     port: 10443
     ver: 2.6.0
     pw: admin
   gitea:
-    domain: git.dn.tld
+    domain: gitea.git
     port: 11443
     ver: 1.17.2
     pg_ver: 14
     nginx_ver: 1.23.1
-  coredns:
-    ver: 1.8.7
+  kube:
+    ver: 1.24.6
   cilium:
     cli:
       ver: 0.12.4
@@ -27,6 +31,38 @@ base:
   dashboard:
     chart_ver: 5.10.0   
     ip: 10.0.3.254
+
+coredns:
+  dir: "{{ base['dir'] }}/coredns"
+  data: "{{ base['dir'] }}/coredns/data"
+  hosts: "{{ base['dir'] }}/coredns/data/hosts"
+  ver: "{{ base['coredns']['ver'] }}"
+
+envoy:
+  dir: "{{ base['dir'] }}/envoy"
+  ver: "v{{ base['envoy']['ver'] }}"
+  domain: "{{ base['envoy']['domain'] }}"
+  admin_port: "{{ base['envoy']['admin_port'] }}"
+
+harbor:
+  dir: "{{ base['dir'] }}/harbor"
+  ver: "v{{ base['harbor']['ver'] }}"
+  domain: "{{ base['harbor']['domain'] }}"
+  port: "{{ base['harbor']['port'] }}"
+  url: "{{ base['harbor']['domain'] }}:{{ base['harbor']['port'] }}" 
+  prj: "{{ base['harbor']['domain'] }}:{{ base['harbor']['port'] }}/library" 
+  external: "registry.{{ base['envoy']['domain'] }}"
+  pw: "{{ base['harbor']['pw'] }}"
+
+gitea:
+  dir: "{{ base['dir'] }}/gitea"
+  ver: "{{ base['gitea']['ver'] }}"
+  domain: "{{ base['gitea']['domain'] }}"
+  port: "{{ base['gitea']['port'] }}"
+  url: "{{ base['gitea']['domain'] }}:{{ base['gitea']['port'] }}"
+  external: "git.{{ base['envoy']['domain'] }}"
+  pg_ver: "{{ base['gitea']['pg_ver'] }}"
+  nginx_ver: "{{ base['gitea']['nginx_ver'] }}"
 
 containerd:
   dir: "{{ base['dir'] }}/containerd"
@@ -41,30 +77,6 @@ kubeadm:
 
 kubectl:
   apt_ver: "{{ base['kube']['ver'] }}-00"
-
-harbor:
-  dir: "{{ base['dir'] }}/harbor"
-  ver: "v{{ base['harbor']['ver'] }}"
-  domain: "{{ base['harbor']['domain'] }}"
-  port: "{{ base['harbor']['port'] }}"
-  url: "{{ base['harbor']['domain'] }}:{{ base['harbor']['port'] }}" 
-  prj: "{{ base['harbor']['domain'] }}:{{ base['harbor']['port'] }}/library" 
-  pw: "{{ base['harbor']['pw'] }}"
-
-gitea:
-  dir: "{{ base['dir'] }}/gitea"
-  ver: "{{ base['gitea']['ver'] }}"
-  domain: "{{ base['gitea']['domain'] }}"
-  port: "{{ base['gitea']['port'] }}"
-  url: "{{ base['gitea']['domain'] }}:{{ base['gitea']['port'] }}"
-  pg_ver: "{{ base['gitea']['pg_ver'] }}"
-  nginx_ver: "{{ base['gitea']['nginx_ver'] }}"
-
-coredns:
-  dir: "{{ base['dir'] }}/coredns"
-  data: "{{ base['dir'] }}/coredns/data"
-  hosts: "{{ base['dir'] }}/coredns/data/hosts"
-  ver: "{{ base['coredns']['ver'] }}"
 
 cilium:
   dir: "{{ base['dir'] }}/cilium"

@@ -40,7 +40,7 @@
   - name: Collect dashboard image names
     ansible.builtin.shell: |
       helm template kubernetes-dashboard {{ dir }}/kubernetes-dashboard > {{ dir }}/rendered.yaml
-      cat {{ dir }}/rendered.yaml | grep "^[ \t]*image:" | sed "s/[ \t]*image: //; s/\"//g" > {{ dir }}/src-images
+      cat {{ dir }}/rendered.yaml | grep "^[ $(echo -e '\t')]*image:" | sed "s/[ $(echo -e '\t')]*image: //; s/\"//g" > {{ dir }}/src-images
     when: grep_dashboard['rc'] == 1
 
   - name: Login to harbor
