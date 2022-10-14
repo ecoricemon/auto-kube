@@ -18,7 +18,7 @@
   - vars.yaml
   vars:
   - dir: "{{ harbor['dir'] }}"
-  - installer: "harbor-offline-installer-{{ harbor['ver'] }}.tgz"
+  - installer: "harbor-online-installer-{{ harbor['ver'] }}.tgz"
   tasks:
   - name: Copy cert into the docker dir
     become: yes

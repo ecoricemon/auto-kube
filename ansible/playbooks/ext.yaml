@@ -1,22 +1,51 @@
 ---
-- hosts: registry
+# Set up DNS
+- hosts: dns
   gather_facts: no
   tasks:
   - name: Install containerd
     ansible.builtin.import_tasks: containerd.yaml
-
   - name: Install docker
     ansible.builtin.import_tasks: docker.yaml
-
 - name: Install coredns
   ansible.builtin.import_playbook: coredns.yaml
 
+# Set up proxy
+- hosts: proxy
+  gather_facts: no
+  tasks:
+  - name: Regist dns addr to the hosts
+    ansible.builtin.import_tasks: regist-dns.yaml
+  - name: Install containerd
+    ansible.builtin.import_tasks: containerd.yaml
+  - name: Install docker
+    ansible.builtin.import_tasks: docker.yaml
 - name: Install envoy
   ansible.builtin.import_playbook: envoy.yaml
 
+# Set up registry
+- hosts: registry
+  gather_facts: no
+  tasks:
+  - name: Regist dns addr to the hosts
+    ansible.builtin.import_tasks: regist-dns.yaml
+  - name: Install containerd
+    ansible.builtin.import_tasks: containerd.yaml
+  - name: Install docker
+    ansible.builtin.import_tasks: docker.yaml
 - name: Install harbor
   ansible.builtin.import_playbook: harbor.yaml
 
+# Set up SCM(git)
+- hosts: git
+  gather_facts: no
+  tasks:
+  - name: Regist dns addr to the hosts
+    ansible.builtin.import_tasks: regist-dns.yaml
+  - name: Install containerd
+    ansible.builtin.import_tasks: containerd.yaml
+  - name: Install docker
+    ansible.builtin.import_tasks: docker.yaml
 - name: Install gitea
   ansible.builtin.import_playbook: gitea.yaml
 
