@@ -18,6 +18,12 @@ base:
     ver: 1.17.2
     pg_ver: 14
     nginx_ver: 1.23.1
+  jenkins:
+    domain: jenkins.ci
+    port: 12443
+    ver: 2.373-jdk11
+    docker_ver: 20.10.19-dind
+    nginx_ver: 1.23.1
   kube:
     ver: 1.24.6
   cilium:
@@ -59,10 +65,18 @@ gitea:
   ver: "{{ base['gitea']['ver'] }}"
   domain: "{{ base['gitea']['domain'] }}"
   port: "{{ base['gitea']['port'] }}"
-  url: "{{ base['gitea']['domain'] }}:{{ base['gitea']['port'] }}"
   external: "git.{{ base['envoy']['domain'] }}"
   pg_ver: "{{ base['gitea']['pg_ver'] }}"
   nginx_ver: "{{ base['gitea']['nginx_ver'] }}"
+
+jenkins:
+  dir: "{{ base['dir'] }}/jenkins"
+  ver: "{{ base['jenkins']['ver'] }}"
+  domain: "{{ base['jenkins']['domain'] }}"
+  port: "{{ base['jenkins']['port'] }}"
+  external: "ci.{{ base['envoy']['domain'] }}"
+  docker_ver: "{{ base['jenkins']['docker_ver'] }}"
+  nginx_ver: "{{ base['jenkins']['nginx_ver'] }}"
 
 containerd:
   dir: "{{ base['dir'] }}/containerd"

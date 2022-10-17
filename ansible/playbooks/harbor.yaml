@@ -1,7 +1,7 @@
 ---
 # Install and run harbor
 - hosts: registry0
-  gather_facts: yes 
+  gather_facts: no
   vars_files:
   - vars.yaml
   vars:
