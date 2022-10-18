@@ -23,7 +23,7 @@
 - name: Install envoy
   ansible.builtin.import_playbook: envoy.yaml
 
-# Set up registry
+# Set up registry(harbor)
 - hosts: registry
   gather_facts: no
   tasks:
@@ -48,4 +48,17 @@
     ansible.builtin.import_tasks: docker.yaml
 - name: Install gitea
   ansible.builtin.import_playbook: gitea.yaml
+
+# Set up CI(jenkins)
+- hosts: git
+  gather_facts: no
+  tasks:
+  - name: Regist dns addr to the hosts
+    ansible.builtin.import_tasks: regist-dns.yaml
+  - name: Install containerd
+    ansible.builtin.import_tasks: containerd.yaml
+  - name: Install docker
+    ansible.builtin.import_tasks: docker.yaml
+- name: Install jenkins
+  ansible.builtin.import_playbook: jenkins.yaml
 

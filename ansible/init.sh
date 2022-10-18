@@ -14,7 +14,7 @@ if [ $type = "vbox" ]; then
 	done
 	ansible-playbook -i inventories/inv-vbox.yaml -K playbooks/init.yaml
 elif [ $type = "utm" ]; then
-	for remote in 192.168.128.10 192.168.128.11; do
+	for remote in 192.168.0.210 192.168.0.211; do
 		ssh-copy-id kube@$remote 2>/dev/null
 	done
 	ansible-playbook -i inventories/inv-utm.yaml -K playbooks/init.yaml
