@@ -48,6 +48,8 @@
     ansible.builtin.import_tasks: docker.yaml
 - name: Install gitea
   ansible.builtin.import_playbook: gitea.yaml
+- name: Configure gitea
+  ansible.builtin.import_playbook: gitea-conf.yaml
 
 # Set up CI(jenkins)
 - hosts: ci

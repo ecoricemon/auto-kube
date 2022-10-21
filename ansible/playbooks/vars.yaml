@@ -18,6 +18,10 @@ base:
     ver: 1.17.2
     pg_ver: 14
     nginx_ver: 1.23.1
+    admin_id: gitea
+    admin_pw: gitea1234
+    jenkins_id: jenkins
+    jenkins_pw: jenkins1234
   jenkins:
     domain: jenkins.ci
     port: 12443
@@ -73,6 +77,10 @@ gitea:
   external: "git.{{ base['envoy']['domain'] }}"
   pg_ver: "{{ base['gitea']['pg_ver'] }}"
   nginx_ver: "{{ base['gitea']['nginx_ver'] }}"
+  admin_id: "{{ base['gitea']['admin_id'] }}"
+  admin_pw: "{{ base['gitea']['admin_pw'] }}"
+  jenkins_id: "{{ base['gitea']['jenkins_id'] }}"
+  jenkins_pw: "{{ base['gitea']['jenkins_pw'] }}"
 
 jenkins:
   dir: "{{ base['dir'] }}/jenkins"

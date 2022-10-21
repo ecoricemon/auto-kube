@@ -1,0 +1,51 @@
+---
+- hosts: git0
+  gather_facts: no
+  vars_files:
+  - vars.yaml
+  tasks:
+  - name: Add gitea admin user
+    ansible.builtin.shell: |
+      docker exec -itu git gitea gitea migrate
+      docker exec -itu git gitea gitea admin user create \
+        --username {{ gitea['admin_id'] }} \
+        --password {{ gitea['admin_pw'] }} \
+        --email admin@email.com \
+        --admin 
+
+  # Grant admin authority to add an organization
+  - name: Add a gitea user for jenkins
+    ansible.builtin.shell: |
+      docker exec -itu git gitea gitea admin user create \
+        --username {{ gitea['jenkins_id'] }} \
+        --password {{ gitea['jenkins_pw'] }} \
+        --email jenkins@email.com \
+        --admin \
+        --access-token \
+        --must-change-password=false | \
+      grep "Access token" | sed "s/Access token was successfully created... //"
+    register: jenkins_token
+
+  - name: Add a gitea organization for jenkins
+    ansible.builtin.shell: |
+      curl -k https://{{ gitea['external'] }}/api/v1/orgs?access_token={{ jenkins_token['stdout'] }} \
+        -H 'accept: application/json' \
+        -H 'Content-Type: application/json' \
+        -d '{
+          "full_name": "jenkins-organization",
+          "username": "jenkins-automation",
+          "repo_admin_change_team_access": true,
+          "visibility": "public"
+        }'
+
+  - name: Remove admin authority from the user jenkins
+    ansible.builtin.shell: |
+      curl -k https://{{ gitea['external'] }}/api/v1/admin/users/{{ gitea['jenkins_id'] }}?access_token={{ jenkins_token['stdout'] }} \
+        -X PATCH \
+        -H 'accept: application/json' \
+        -H 'Content-Type: application/json' \
+        -d '{
+          "login_name": "{{ gitea.jenkins_id }}",
+          "admin": false
+        }'
+    
