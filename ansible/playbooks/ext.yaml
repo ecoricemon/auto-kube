@@ -61,4 +61,6 @@
     ansible.builtin.import_tasks: docker.yaml
 - name: Install jenkins
   ansible.builtin.import_playbook: jenkins.yaml
+- name: Install jenkins plugins
+  ansible.builtin.import_playbook: jenkins-plugins.yaml
 

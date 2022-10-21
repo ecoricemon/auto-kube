@@ -85,6 +85,22 @@
     ansible.builtin.shell: sed -i "s/\$DOCKER_COMPOSE up/#\$DOCKER_COMPOSE up/" {{ dir }}/harbor/install.sh
     when: grep_harbor['rc'] == 1
 
+  - name: Check harbor-arm images
+    ansible.builtin.shell: |
+      docker_images=$(docker image ls)
+      echo $docker_images | grep -E "goharbor/harbor-log[ $(echo -e '\t')]*dev-arm" && \
+      echo $docker_images | grep -E "goharbor/registry-photon[ $(echo -e '\t')]*dev-arm" && \
+      echo $docker_images | grep -E "goharbor/harbor-registryctl[ $(echo -e '\t')]*dev-arm" && \
+      echo $docker_images | grep -E "goharbor/harbor-db[ $(echo -e '\t')]*dev-arm" && \
+      echo $docker_images | grep -E "goharbor/harbor-core[ $(echo -e '\t')]*dev-arm" && \
+      echo $docker_images | grep -E "goharbor/harbor-portal[ $(echo -e '\t')]*dev-arm" && \
+      echo $docker_images | grep -E "goharbor/harbor-jobservice[ $(echo -e '\t')]*dev-arm" && \
+      echo $docker_images | grep -E "goharbor/redis-photon[ $(echo -e '\t')]*dev-arm" && \
+      echo $docker_images | grep -E "goharbor/nginx-photon[ $(echo -e '\t')]*dev-arm"  
+    register: grep_arm
+    when: ansible_facts['architecture'] == 'aarch64'
+    failed_when: grep_arm['rc'] == 2
+
   - name: Install prerequisites for harbor-arm
     become: yes
     ansible.builtin.apt:
@@ -92,13 +108,17 @@
       pkg:
       - build-essential
       - docker-compose
-    when: ansible_facts['architecture'] == 'aarch64'
+    when:
+    - ansible_facts['architecture'] == 'aarch64'
+    - grep_arm['rc'] == 1
  
   - name: Clone harbor-arm
     ansible.builtin.shell:
       chdir: "{{ dir }}"
       cmd: git clone https://github.com/goharbor/harbor-arm.git
-    when: ansible_facts['architecture'] == 'aarch64'
+    when:
+    - ansible_facts['architecture'] == 'aarch64'
+    - grep_arm['rc'] == 1
    
   - name: Build harbor-arm images
     become: yes
@@ -111,11 +131,15 @@
         make pre_update
         make compile COMPILETAG=compile_golangimage
         make build GOBUILDTAGS="include_oss include_gcs" BUILDBIN=true NOTARYFLAG=false TRIVYFLAG=false CHARTFLAG=false GEN_TLS=true PULL_BASE_FROM_DOCKERHUB=false
-    when: ansible_facts['architecture'] == 'aarch64'
+    when:
+    - ansible_facts['architecture'] == 'aarch64'
+    - grep_arm['rc'] == 1
 
   - name: Change image tag with arm
     ansible.builtin.shell: sed -Ei "s#(goharbor/prepare):([v.0-9]+)#\1:dev-arm#" {{ dir }}/harbor/prepare
-    when: ansible_facts['architecture'] == 'aarch64'
+    when:
+    - ansible_facts['architecture'] == 'aarch64'
+    - grep_arm['rc'] == 1
 
   - name: Prepare harbor
     become: yes

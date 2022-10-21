@@ -93,6 +93,7 @@
         while [ ! -f /opt/java/openjdk/lib/security/ready ]; do
           sleep 15
         done
+        git config --global http.sslCAInfo /var/jenkins_home/certs/gitea.crt
         /usr/local/bin/jenkins.sh 
 
   - name: Make jenkins docker compose file
@@ -158,6 +159,7 @@
             user: root
             restart: on-failure
             volumes:
+            - jenkins_data:/var/jenkins_home
             - {{ dir }}/jenkins/keystore:/keystore
             entrypoint: ""
             command:
@@ -177,6 +179,9 @@
                   sleep 15
                   exit 1
                 else
+                  mkdir -p /var/jenkins_home/certs
+                  cp -f gitea.crt /var/jenkins_home/certs/
+                  chown -R jenkins:jenkins /var/jenkins_home/certs
                   echo 1 > ready
                 fi
               fi
