@@ -50,7 +50,7 @@
   ansible.builtin.import_playbook: gitea.yaml
 
 # Set up CI(jenkins)
-- hosts: git
+- hosts: ci
   gather_facts: no
   tasks:
   - name: Regist dns addr to the hosts

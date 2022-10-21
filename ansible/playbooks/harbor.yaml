@@ -7,7 +7,7 @@
   vars:
   - dir: "{{ harbor['dir'] }}/certs"
   - cn: "{{ harbor['domain'] }}"
-  - dns: "{{ harbor['domain'] }}"
+  - alt_names: "{{ harbor['alt_names'] }}"
   tasks:
   - name: Generate cert for harbor
     ansible.builtin.import_tasks: cert.yaml

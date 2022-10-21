@@ -6,7 +6,7 @@
   vars:
   - dir: "{{ gitea['dir'] }}/certs"
   - cn: "{{ gitea['domain'] }}"
-  - dns: "{{ gitea['domain'] }}"
+  - alt_names: "{{ gitea['alt_names'] }}"
   tasks:
   - name: Generate cert for gitea
     ansible.builtin.import_tasks: cert.yaml

@@ -1,0 +1,23 @@
+---
+- hosts: ci0
+  gather_facts: no
+  vars_files:
+  - vars.yaml
+  vars:
+  - dir: "{{ jenkins['dir'] }}"
+  tasks:
+  - name: Install jenkins plugin - Pipeline
+    ansible.builtin.shell: >
+      docker exec jenkins jenkins-plugin-cli --plugins workflow-aggregator:590.v6a_d052e5a_a_b_5
+
+  - name: Install jenkins plugin - Git
+    ansible.builtin.shell: >
+      docker exec jenkins jenkins-plugin-cli --plugins git:4.12.1
+
+  - name: Install jenkins plugin - Gitea
+    ansible.builtin.shell: >
+      docker exec jenkins jenkins-plugin-cli --plugins gitea:1.4.4
+
+  - name: Restart jenkins
+    ansible.builtin.shell: docker compose -f {{ dir }}/docker-compose.yaml restart
+

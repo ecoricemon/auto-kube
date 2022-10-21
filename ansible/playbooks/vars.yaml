@@ -48,12 +48,16 @@ envoy:
   dir: "{{ base['dir'] }}/envoy"
   ver: "v{{ base['envoy']['ver'] }}"
   domain: "{{ base['envoy']['domain'] }}"
+  alt_names:
+  - "{{ base['envoy']['domain'] }}"
+  - "*.{{ base['envoy']['domain'] }}"
   admin_port: "{{ base['envoy']['admin_port'] }}"
 
 harbor:
   dir: "{{ base['dir'] }}/harbor"
   ver: "v{{ base['harbor']['ver'] }}"
   domain: "{{ base['harbor']['domain'] }}"
+  alt_names: ["{{ base['harbor']['domain'] }}"]
   port: "{{ base['harbor']['port'] }}"
   url: "{{ base['harbor']['domain'] }}:{{ base['harbor']['port'] }}" 
   prj: "{{ base['harbor']['domain'] }}:{{ base['harbor']['port'] }}/library" 
@@ -64,6 +68,7 @@ gitea:
   dir: "{{ base['dir'] }}/gitea"
   ver: "{{ base['gitea']['ver'] }}"
   domain: "{{ base['gitea']['domain'] }}"
+  alt_names: ["{{ base['gitea']['domain'] }}"]
   port: "{{ base['gitea']['port'] }}"
   external: "git.{{ base['envoy']['domain'] }}"
   pg_ver: "{{ base['gitea']['pg_ver'] }}"
@@ -73,6 +78,7 @@ jenkins:
   dir: "{{ base['dir'] }}/jenkins"
   ver: "{{ base['jenkins']['ver'] }}"
   domain: "{{ base['jenkins']['domain'] }}"
+  alt_names: ["{{ base['jenkins']['domain'] }}"]
   port: "{{ base['jenkins']['port'] }}"
   external: "ci.{{ base['envoy']['domain'] }}"
   docker_ver: "{{ base['jenkins']['docker_ver'] }}"

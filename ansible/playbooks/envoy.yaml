@@ -6,7 +6,7 @@
   vars:
   - dir: "{{ envoy['dir'] }}/certs"
   - cn: "{{ envoy['domain'] }}"
-  - dns: "{{ envoy['domain'] }}"
+  - alt_names: "{{ envoy['alt_names'] }}"
   tasks:
   - name: Generate cert for envoy
     ansible.builtin.import_tasks: cert.yaml

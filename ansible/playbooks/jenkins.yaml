@@ -6,7 +6,7 @@
   vars:
   - dir: "{{ jenkins['dir'] }}/certs"
   - cn: "{{ jenkins['domain'] }}"
-  - dns: "{{ jenkins['domain'] }}"
+  - alt_names: "{{ jenkins['alt_names'] }}"
   tasks:
   - name: Generate cert for jenkins
     ansible.builtin.import_tasks: cert.yaml
@@ -25,6 +25,7 @@
     loop:
     - "{{ dir }}/jenkins/data"
     - "{{ dir }}/jenkins/docker-certs"
+    - "{{ dir }}/jenkins/keystore"
     - "{{ dir }}/nginx/certs"
     - "{{ dir }}/nginx/tmp"
 
@@ -83,6 +84,17 @@
           }   
         }
 
+  - name: Make waiting script for new java keystore
+    ansible.builtin.copy:
+      dest: "{{ dir }}/jenkins/wait-and-run.sh"
+      mode: 0777
+      content: |
+        #!/bin/sh
+        while [ ! -f /opt/java/openjdk/lib/security/ready ]; do
+          sleep 15
+        done
+        /usr/local/bin/jenkins.sh 
+
   - name: Make jenkins docker compose file
     ansible.builtin.blockinfile:
       path: "{{ dir }}/docker-compose.yaml"
@@ -134,8 +146,40 @@
             volumes:
             - jenkins_data:/var/jenkins_home
             - jenkins_certs:/certs/client:ro
+            - {{ dir }}/jenkins/keystore:/opt/java/openjdk/lib/security
+            - {{ dir }}/jenkins/wait-and-run.sh:/usr/local/bin/wait-and-run.sh
+            entrypoint: ["/usr/bin/tini", "--", "/usr/local/bin/wait-and-run.sh"]
             depends_on:
             - docker
+            - java_keystore
+          java_keystore:
+            container_name: java_keystore
+            image: jenkins/jenkins:{{ jenkins['ver'] }}
+            user: root
+            restart: on-failure
+            volumes:
+            - {{ dir }}/jenkins/keystore:/keystore
+            entrypoint: ""
+            command:
+            - sh
+            - -c
+            - |
+              cd /keystore
+              if [ ! -f ready ]; then
+                cp -rn /opt/java/openjdk/lib/security/* ./
+                if [ ! -f gitea.crt ]; then
+                  openssl s_client -connect {{ gitea['external'] }}:443 < /dev/null 2> /dev/null | \
+                  sed -En '/^-----BEGIN CERTIFICATE-----$/,/^-----END CERTIFICATE-----$/p' > gitea.crt
+                fi
+                keytool -importcert -alias gitea -file gitea.crt -noprompt -keystore cacerts -storepass changeit
+                if [ $? != 0 ]; then
+                  rm gitea.crt
+                  sleep 15
+                  exit 1
+                else
+                  echo 1 > ready
+                fi
+              fi
           docker:
             container_name: jenkins_docker
             image: docker:{{ jenkins['docker_ver'] }}
@@ -167,11 +211,11 @@
 
   - name: Shut down jenkins if it's not running
     ansible.builtin.shell: docker compose -f {{ dir }}/docker-compose.yaml down
-    when: jenkins_num['stdout'] != "3"
+    when: jenkins_num['stdout'] != "4"
 
   - name: Run jenkins
     ansible.builtin.shell: docker compose -f {{ dir }}/docker-compose.yaml up -d
-    when: jenkins_num['stdout'] != "3"
+    when: jenkins_num['stdout'] != "4"
 
 - hosts: dns0
   gather_facts: no
