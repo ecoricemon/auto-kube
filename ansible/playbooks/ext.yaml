@@ -65,4 +65,6 @@
   ansible.builtin.import_playbook: jenkins.yaml
 - name: Install jenkins plugins
   ansible.builtin.import_playbook: jenkins-plugins.yaml
+- name: Configure jenkins
+  ansible.builtin.import_playbook: jenkins-conf.yaml
 

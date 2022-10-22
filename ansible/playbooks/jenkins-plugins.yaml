@@ -18,6 +18,10 @@
     ansible.builtin.shell: >
       docker exec jenkins jenkins-plugin-cli --plugins gitea:1.4.4
 
+  - name: Install jenkins plugin - Configuration as Code
+    ansible.builtin.shell: >
+      docker exec jenkins jenkins-plugin-cli --plugins configuration-as-code:1559.v38a_b_2e3b_6b_b_7
+
   - name: Restart jenkins
     ansible.builtin.shell: docker compose -f {{ dir }}/docker-compose.yaml restart
 

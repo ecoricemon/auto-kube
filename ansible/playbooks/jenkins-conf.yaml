@@ -1,0 +1,35 @@
+---
+- hosts: ci0
+  gather_facts: no
+  vars_files:
+  - vars.yaml
+  vars:
+  - dir: "{{ jenkins['dir'] }}"
+  - token: "{{ lookup('file', '.keep/jenkins_token') }}"
+  tasks:
+  - name: Make sure the dir exists
+    ansible.builtin.file:
+      path: "{{ dir }}/jenkins/data/casc_configs"
+      state: directory
+
+  - name: Make initial credentials
+    ansible.builtin.blockinfile:
+      path: "{{ dir }}/jenkins/data/casc_configs/credentials.yaml"
+      create: yes
+      block: |
+        credentials:
+          system:
+            domainCredentials:
+            - domain:
+                name: "{{ gitea['external'] }}"
+                description: "gitea domain"
+                specifications:
+                - hostnameSpecification:
+                    includes: "{{ gitea['external'] }}"
+              credentials:
+              - giteaAccessToken:
+                  scope: SYSTEM
+                  token: {{ token }}
+                  id: gitea-credentials
+                  description: "The access authority about Gitea server as 'jenkins' user" 
+

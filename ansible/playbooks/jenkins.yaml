@@ -142,6 +142,7 @@
             - DOCKER_CERT_PATH=/certs/client
             - DOCKER_TLS_VERIFY=1
             - PLUGIN_DIR=/var/jenkins_home/plugins
+            - CASC_JENKINS_CONFIG=/var/jenkins_home/casc_configs
             networks:
             - jenkins_net
             volumes:
