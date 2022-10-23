@@ -6,22 +6,34 @@
   vars:
   - dir: "{{ jenkins['dir'] }}"
   tasks:
-  - name: Install jenkins plugin - Pipeline
+  - name: Download jenkins plugin - Pipeline
     ansible.builtin.shell: >
       docker exec jenkins jenkins-plugin-cli --plugins workflow-aggregator:590.v6a_d052e5a_a_b_5
 
-  - name: Install jenkins plugin - Git
+  - name: Download jenkins plugin - Git
     ansible.builtin.shell: >
       docker exec jenkins jenkins-plugin-cli --plugins git:4.12.1
 
-  - name: Install jenkins plugin - Gitea
+  - name: Download jenkins plugin - Gitea
     ansible.builtin.shell: >
       docker exec jenkins jenkins-plugin-cli --plugins gitea:1.4.4
 
-  - name: Install jenkins plugin - Configuration as Code
+  - name: Download jenkins plugin - Configuration as Code
     ansible.builtin.shell: >
       docker exec jenkins jenkins-plugin-cli --plugins configuration-as-code:1559.v38a_b_2e3b_6b_b_7
 
-  - name: Restart jenkins
+  - name: Make directory for the upper plugin
+    ansible.builtin.file:
+      path: "{{ dir }}/jenkins/data/casc_configs"
+      state: directory
+
+  - name: Download jenkins plugin - Job DSL
+    ansible.builtin.shell: >
+      docker exec jenkins jenkins-plugin-cli --plugins job-dsl:1.81
+
+  - name: Wait for jenkins becomes ready
+    ansible.builtin.import_tasks: wait-jenkins.yaml
+
+  - name: Restart jenkins to install plugins
     ansible.builtin.shell: docker compose -f {{ dir }}/docker-compose.yaml restart
 

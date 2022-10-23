@@ -5,8 +5,8 @@
 - hosts: cluster
   gather_facts: no
   tasks:
-  - name: Regist dns addr to the hosts
-    ansible.builtin.import_tasks: regist-dns.yaml
+  - name: Add dns address to the hosts
+    ansible.builtin.import_tasks: add-dns.yaml
   - name: Install containerd
     ansible.builtin.import_tasks: containerd.yaml
 

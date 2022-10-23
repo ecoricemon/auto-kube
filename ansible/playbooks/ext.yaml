@@ -14,8 +14,8 @@
 - hosts: proxy
   gather_facts: no
   tasks:
-  - name: Regist dns addr to the hosts
-    ansible.builtin.import_tasks: regist-dns.yaml
+  - name: Add dns address to the hosts
+    ansible.builtin.import_tasks: add-dns.yaml
   - name: Install containerd
     ansible.builtin.import_tasks: containerd.yaml
   - name: Install docker
@@ -27,8 +27,8 @@
 - hosts: registry
   gather_facts: no
   tasks:
-  - name: Regist dns addr to the hosts
-    ansible.builtin.import_tasks: regist-dns.yaml
+  - name: Add dns address to the hosts
+    ansible.builtin.import_tasks: add-dns.yaml
   - name: Install containerd
     ansible.builtin.import_tasks: containerd.yaml
   - name: Install docker
@@ -40,8 +40,8 @@
 - hosts: git
   gather_facts: no
   tasks:
-  - name: Regist dns addr to the hosts
-    ansible.builtin.import_tasks: regist-dns.yaml
+  - name: Add dns address to the hosts
+    ansible.builtin.import_tasks: add-dns.yaml
   - name: Install containerd
     ansible.builtin.import_tasks: containerd.yaml
   - name: Install docker
@@ -55,16 +55,14 @@
 - hosts: ci
   gather_facts: no
   tasks:
-  - name: Regist dns addr to the hosts
-    ansible.builtin.import_tasks: regist-dns.yaml
+  - name: Add dns address to the hosts
+    ansible.builtin.import_tasks: add-dns.yaml
   - name: Install containerd
     ansible.builtin.import_tasks: containerd.yaml
   - name: Install docker
     ansible.builtin.import_tasks: docker.yaml
 - name: Install jenkins
   ansible.builtin.import_playbook: jenkins.yaml
-- name: Install jenkins plugins
-  ansible.builtin.import_playbook: jenkins-plugins.yaml
 - name: Configure jenkins
   ansible.builtin.import_playbook: jenkins-conf.yaml
 

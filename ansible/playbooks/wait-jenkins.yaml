@@ -1,0 +1,18 @@
+---
+- name: Wait for jenkins becomes ready
+  ansible.builtin.shell: |
+    pw=$(cat {{ dir }}/jenkins/data/secrets/initialAdminPassword)
+    t=0 
+    wait=3
+    try=20
+    end=$((wait*try))
+    while [ $t -lt $end ]; do
+      code=$(curl -ksu admin:$pw -o /dev/null -w %{http_code} https://{{ jenkins['external'] }}) 
+      if [ $code -lt 500 ]; then
+        exit 0
+      else
+        sleep $wait
+      fi  
+      t=$((t+wait))
+    done
+    exit 1
