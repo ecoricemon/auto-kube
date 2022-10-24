@@ -190,19 +190,30 @@
       code: 302
     ansible.builtin.import_tasks: wait-jenkins.yaml
 
-  - name: Set default security setting by removing initial configuration file
-    ansible.builtin.file:
+  - name: Set security setting to default
+    ansible.builtin.blockinfile:
       path: "{{ dir }}/jenkins/data/casc_configs/init/security.yaml"
-      state: absent
-
-  - name: Remove initial configurations by renaming
-    ansible.builtin.shell: |
-      rm -rf {{ dir }}/jenkins/data/casc_configs/.init
-      mv {{ dir }}/jenkins/data/casc_configs/init {{ dir }}/jenkins/data/casc_configs/.init
+      create: yes
+      block: |
+        security:
+          # Restore
+          globalJobDslSecurityConfiguration:
+            useScriptSecurity: true
 
   - name: Mark jenkins is fully configured, so insecure options will be removed on next running
     ansible.builtin.shell: echo "ready" > {{ dir }}/jenkins/data/state
 
   - name: Restart jenkins
     ansible.builtin.shell: docker compose -f {{ dir }}/docker-compose.yaml restart
+
+  - vars:
+      title: "Wait for jenkins becomes ready"
+      path: "/"
+      code: 200
+    ansible.builtin.import_tasks: wait-jenkins.yaml
+
+  - name: Remove initial configurations by renaming
+    ansible.builtin.shell: |
+      rm -rf {{ dir }}/jenkins/data/casc_configs/.init
+      mv {{ dir }}/jenkins/data/casc_configs/init {{ dir }}/jenkins/data/casc_configs/.init
 
