@@ -12,11 +12,11 @@ if [ $type = "vbox" ]; then
 	for remote in 10.0.3.9; do
 		ssh-copy-id -o ProxyJump="kube@localhost:8022" kube@$remote 2>/dev/null
 	done
-	ansible-playbook -i inventories/inv-vbox.yaml -K playbooks/ext.yaml
+	ansible-playbook -i inventories/vbox.yaml -K playbooks/ext.yaml
 elif [ $type = "utm" ]; then
 	for remote in 192.168.0.209; do
 		ssh-copy-id kube@$remote 2>/dev/null
 	done
-	ansible-playbook -i inventories/inv-utm.yaml -K playbooks/ext.yaml
+	ansible-playbook -i inventories/utm.yaml -K playbooks/ext.yaml
 fi
 

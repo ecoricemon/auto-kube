@@ -31,7 +31,10 @@
     ansible.builtin.shell: >
       docker exec jenkins jenkins-plugin-cli --plugins job-dsl:1.81
 
-  - name: Wait for jenkins becomes ready
+  - vars:
+      title: "Wait for jenkins becomes ready"
+      path: "/"
+      code: 200
     ansible.builtin.import_tasks: wait-jenkins.yaml
 
   - name: Restart jenkins to install plugins

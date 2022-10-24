@@ -9,8 +9,8 @@ fi
 type=$1
 
 if [ $type = "vbox" ]; then
-	ansible-playbook -i inventories/inv-vbox.yaml -K playbooks/make-cluster.yaml
+	ansible-playbook -i inventories/vbox.yaml -K playbooks/make-cluster.yaml
 elif [ $type = "utm" ]; then
-	ansible-playbook -i inventories/inv-utm.yaml -K playbooks/make-cluster.yaml
+	ansible-playbook -i inventories/utm.yaml -K playbooks/make-cluster.yaml
 fi
 

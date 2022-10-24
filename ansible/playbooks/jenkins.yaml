@@ -84,16 +84,29 @@
           }   
         }
 
-  - name: Make waiting script for new java keystore
+  - name: Make start script
     ansible.builtin.copy:
       dest: "{{ dir }}/jenkins/wait-and-run.sh"
       mode: 0777
       content: |
         #!/bin/sh
-        while [ ! -f /opt/java/openjdk/lib/security/ready ]; do
-          sleep 15
+        touch /var/jenkins_home/state
+        s=$(cat /var/jenkins_home/state)
+        while [ "$s" != "ready" ]; do
+          if [ "$s" = "cert" ]; then
+            # Second state: Set security options, Processor: ansible initial configuration script
+            git config --global http.sslCAInfo /var/jenkins_home/certs/gitea.crt
+            export JAVA_OPTS="-Dhudson.security.csrf.GlobalCrumbIssuerConfiguration.DISABLE_CSRF_PROTECTION=true"
+            /usr/local/bin/jenkins.sh 
+            exit 0
+          else
+            # Very first state: Just wait for setting cert for git and java, Processor: java_keystore container
+            sleep 10
+          fi
+          sleep 5
+          s=$(cat /var/jenkins_home/state)
         done
-        git config --global http.sslCAInfo /var/jenkins_home/certs/gitea.crt
+        # Final state: Just run jenkins
         /usr/local/bin/jenkins.sh 
 
   - name: Make jenkins docker compose file
@@ -167,8 +180,9 @@
             - sh
             - -c
             - |
-              cd /keystore
-              if [ ! -f ready ]; then
+              touch /var/jenkins_home/state
+              if [ -z $(cat /var/jenkins_home/state) ]; then
+                cd /keystore
                 cp -rn /opt/java/openjdk/lib/security/* ./
                 if [ ! -f gitea.crt ]; then
                   openssl s_client -connect {{ gitea['external'] }}:443 < /dev/null 2> /dev/null | \
@@ -183,7 +197,8 @@
                   mkdir -p /var/jenkins_home/certs
                   cp -f gitea.crt /var/jenkins_home/certs/
                   chown -R jenkins:jenkins /var/jenkins_home/certs
-                  echo 1 > ready
+                  echo "cert" > /var/jenkins_home/state
+                  chown jenkins:jenkins /var/jenkins_home/state
                 fi
               fi
           docker:

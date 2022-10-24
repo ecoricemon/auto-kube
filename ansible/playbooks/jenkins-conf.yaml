@@ -1,4 +1,17 @@
 ---
+- hosts: ci0
+  gather_facts: no
+  vars_files:
+  - vars.yaml
+  vars:
+  - dir: "{{ jenkins['dir'] }}"
+  tasks:
+  - name: Mark jenkins is cert state, so this will cause reconfiguration
+    ansible.builtin.shell: |
+      if [ "$(cat {{ dir }}/jenkins/data/state)" = "ready" ]; then
+        echo "cert" > {{ dir }}/jenkins/data/state
+      fi
+
 - name: Install jenkins plugins
   ansible.builtin.import_playbook: jenkins-plugins.yaml
 
@@ -34,7 +47,7 @@
                     includes: "{{ gitea['external'] }}"
               credentials:
               - giteaAccessToken:
-                  scope: SYSTEM
+                  scope: GLOBAL
                   token: {{ token }}
                   id: gitea-credentials
                   description: "The access authority about Gitea server as jenkins user" 
@@ -54,7 +67,7 @@
 
   - name: Make initial security settings
     ansible.builtin.blockinfile:
-      path: "{{ dir }}/jenkins/data/casc_configs/init/unclassified.yaml"
+      path: "{{ dir }}/jenkins/data/casc_configs/init/security.yaml"
       create: yes
       block: |
         security:
@@ -62,18 +75,19 @@
           globalJobDslSecurityConfiguration:
             useScriptSecurity: false
 
-  - name: Wait for jenkins becomes ready
+  - vars:
+      title: "Wait for jenkins becomes ready"
+      path: "/"
+      code: 200
     ansible.builtin.import_tasks: wait-jenkins.yaml
-
-  - name: Remove initializing configurations by renaming
-    ansible.builtin.shell: |
-      rm -rf {{ dir }}/jenkins/data/casc_configs/.init
-      mv {{ dir }}/jenkins/data/casc_configs/init {{ dir }}/jenkins/data/casc_configs/.init
 
   - name: Restart jenkins to adapt settings
     ansible.builtin.shell: docker compose -f {{ dir }}/docker-compose.yaml restart
 
-  - name: Wait for jenkins becomes ready
+  - vars:
+      title: "Wait for jenkins becomes ready"
+      path: "/"
+      code: 200
     ansible.builtin.import_tasks: wait-jenkins.yaml
 
   - name: Check jenkins cli tool
@@ -82,7 +96,9 @@
     register: stat_cli
 
   - name: Download jenkins cli tool
-    ansible.builtin.shell: find {{ dir }}/jenkins/data/war/WEB-INF/lib/ -name cli-*.jar -print0 | xargs -0 -n 1 -I {} cp {} {{ dir }}/jenkins/data/jenkins-cli.jar
+    ansible.builtin.shell: |
+      find {{ dir }}/jenkins/data/war/WEB-INF/lib/ -name cli-*.jar -print0 | \
+      xargs -0 -n 1 -I {} cp {} {{ dir }}/jenkins/data/jenkins-cli.jar
     when: not stat_cli['stat']['exists']
 
   - name: Make seed job configuration file
@@ -91,6 +107,7 @@
       content: |
         <?xml version='1.1' encoding='UTF-8'?>
         <project>
+          <actions/>
           <description></description>
           <keepDependencies>false</keepDependencies>
           <properties/>
@@ -99,6 +116,7 @@
           <disabled>false</disabled>
           <blockBuildWhenDownstreamBuilding>false</blockBuildWhenDownstreamBuilding>
           <blockBuildWhenUpstreamBuilding>false</blockBuildWhenUpstreamBuilding>
+          <authToken>init-token</authToken>
           <triggers/>
           <concurrentBuild>false</concurrentBuild>
           <builders>
@@ -125,12 +143,13 @@
     ansible.builtin.copy:
       dest: "{{ dir }}/jenkins/data/workspace/seed/gitea_org.groovy"
       content: |
-        organizationFolder('gitea-org-folder') {
+        organizationFolder('gitea-folder') {
           displayName('Gitea Folder')
           organizations {
             gitea {
               repoOwner('jenkins-automation')
               serverUrl("https://{{ gitea['external'] }}")
+              credentialsId('gitea-credentials')
               traits {
                 giteaBranchDiscovery {
                   strategyId(0)
@@ -158,4 +177,32 @@
     ansible.builtin.shell: |
       pw=$(cat {{ dir }}/jenkins/data/secrets/initialAdminPassword)
       docker exec jenkins sh -c "cat /var/jenkins_home/workspace/seed/config.xml | java -jar /var/jenkins_home/jenkins-cli.jar -s http://localhost:8080 -auth admin:$pw create-job seed"
+
+  - vars: 
+      title: "Build the jenkins seed job"
+      path: "/job/seed/build?token=init-token" 
+      code: 201
+    ansible.builtin.import_tasks: wait-jenkins.yaml
+
+  - vars: 
+      title: "Scan gitea"
+      path: "/job/gitea-folder/build?delay=0 -X POST"
+      code: 302
+    ansible.builtin.import_tasks: wait-jenkins.yaml
+
+  - name: Set default security setting by removing initial configuration file
+    ansible.builtin.file:
+      path: "{{ dir }}/jenkins/data/casc_configs/init/security.yaml"
+      state: absent
+
+  - name: Remove initial configurations by renaming
+    ansible.builtin.shell: |
+      rm -rf {{ dir }}/jenkins/data/casc_configs/.init
+      mv {{ dir }}/jenkins/data/casc_configs/init {{ dir }}/jenkins/data/casc_configs/.init
+
+  - name: Mark jenkins is fully configured, so insecure options will be removed on next running
+    ansible.builtin.shell: echo "ready" > {{ dir }}/jenkins/data/state
+
+  - name: Restart jenkins
+    ansible.builtin.shell: docker compose -f {{ dir }}/docker-compose.yaml restart
 
