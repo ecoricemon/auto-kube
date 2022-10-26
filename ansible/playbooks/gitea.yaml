@@ -82,6 +82,11 @@
           }   
         }
 
+  - name: Get proxy cert to verify webhook target
+    ansible.builtin.shell: >
+      openssl s_client -connect {{ envoy['domain'] }}:443 < /dev/null 2> /dev/null | \
+      sed -En '/^-----BEGIN CERTIFICATE-----$/,/^-----END CERTIFICATE-----$/p' > {{ dir }}/gitea/jenkins.crt
+
   - name: Make gitea docker compose file
     ansible.builtin.blockinfile:
       path: "{{ dir }}/docker-compose.yaml"
@@ -124,10 +129,12 @@
             - GITEA__server__ROOT_URL=https://{{ gitea['external'] }}
             - GITEA__server__OFFLINE_MODE=true
             - GITEA__security__INSTALL_LOCK=true
+            - GITEA__webhook__ALLOWED_HOST_LIST=*.{{ envoy['domain'] }}
             networks:
             - gitea_net
             volumes:
             - {{ dir }}/gitea:/data
+            - {{ dir }}/gitea/jenkins.crt:/etc/ssl/certs/jenkins.crt
             - /etc/timezone:/etc/timezone:ro
             - /etc/localtime:/etc/localtime:ro
             depends_on:
