@@ -37,6 +37,10 @@
       code: 200
     ansible.builtin.import_tasks: wait-jenkins.yaml
 
+  - name: Download jenkins plugin - Docker Pipeline
+    ansible.builtin.shell: >
+      docker exec jenkins jenkins-plugin-cli --plugins docker-workflow:528.v7c193a_0b_e67c
+
   - name: Restart jenkins to install plugins
     ansible.builtin.shell: docker compose -f {{ dir }}/docker-compose.yaml restart
 

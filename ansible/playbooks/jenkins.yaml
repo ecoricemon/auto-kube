@@ -25,6 +25,7 @@
     loop:
     - "{{ dir }}/jenkins/data"
     - "{{ dir }}/jenkins/docker-certs"
+    - "{{ dir }}/jenkins/docker-data"
     - "{{ dir }}/jenkins/keystore"
     - "{{ dir }}/nginx/certs"
     - "{{ dir }}/nginx/tmp"
@@ -109,6 +110,19 @@
         # Final state: Just run jenkins
         /usr/local/bin/jenkins.sh 
 
+  - name: Make dockerfile for jenkins (Add docker client, not daemon)
+    ansible.builtin.blockinfile:
+      path: "{{ dir }}/jenkins/Dockerfile"
+      create: yes
+      block: |
+        FROM jenkins/jenkins:{{ jenkins['ver'] }}
+        USER root
+        RUN apt-get update && apt-get install -y lsb-release
+        RUN curl -fsSLo /usr/share/keyrings/docker-archive-keyring.asc https://download.docker.com/linux/debian/gpg
+        RUN echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/docker-archive-keyring.asc] https://download.docker.com/linux/debian $(lsb_release -cs) stable" > /etc/apt/sources.list.d/docker.list
+        RUN apt-get update && apt-get install -y docker-ce-cli
+        USER jenkins
+
   - name: Make jenkins docker compose file
     ansible.builtin.blockinfile:
       path: "{{ dir }}/docker-compose.yaml"
@@ -148,7 +162,9 @@
             - jenkins
           jenkins:
             container_name: jenkins
-            image: jenkins/jenkins:{{ jenkins['ver'] }}
+            image: jenkins/jenkins:dockerc
+            build:
+              context: {{ dir }}/jenkins
             restart: always
             environment:
             - DOCKER_HOST=tcp://docker:2376
@@ -160,7 +176,7 @@
             - jenkins_net
             volumes:
             - jenkins_data:/var/jenkins_home
-            - jenkins_certs:/certs/client:ro
+            - jenkins_certs:/certs:ro
             - {{ dir }}/jenkins/keystore:/opt/java/openjdk/lib/security
             - {{ dir }}/jenkins/wait-and-run.sh:/usr/local/bin/wait-and-run.sh
             entrypoint: ["/usr/bin/tini", "--", "/usr/local/bin/wait-and-run.sh"]
@@ -212,7 +228,8 @@
             - jenkins_net
             volumes:
             - jenkins_data:/var/jenkins_home
-            - jenkins_certs:/certs/client
+            - jenkins_certs:/certs
+            - {{ dir }}/jenkins/docker-data:/var/lib/docker
             command: --storage-driver=overlay2
 
   - ansible.builtin.package_facts:
