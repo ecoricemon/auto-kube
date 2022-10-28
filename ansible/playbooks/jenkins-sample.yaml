@@ -1,0 +1,67 @@
+---
+- hosts: git0
+  gather_facts: no
+  vars_files:
+  - vars.yaml
+  vars:
+  - dir: "{{ gitea['dir'] }}"
+  - token: "{{ lookup('file', '.keep/gitea-access-token') }}"
+  tasks:
+  - name: Add proxy cert to git config
+    ansible.builtin.shell: |
+      openssl s_client -connect {{ gitea['external'] }}:443 < /dev/null 2> /dev/null | sed -En '/^-----BEGIN CERTIFICATE-----$/,/^-----END CERTIFICATE-----$/p' > {{ dir }}/proxy.cert
+      git config --global http.sslCAInfo {{ dir }}/proxy.cert
+
+  - name: Create a sample repository
+    ansible.builtin.shell: |
+      curl -k https://{{ gitea['external'] }}/api/v1/orgs/jenkins-automation/repos?access_token={{ token }} \
+        -H 'accept: application/json' \
+        -H 'Content-Type: application/json' \
+        -d '{
+          "auto_init": true,
+          "default_branch": "main",
+          "license": "MIT",
+          "name": "sample",
+          "private": false,
+          "template": false,
+          "trust_model": "default"
+        }'
+
+  - name: Clone the repo
+    ansible.builtin.git:
+      repo: https://{{ gitea['external'] }}/jenkins-automation/sample.git
+      dest: "{{ dir }}/sample"
+
+  - name: Add Jenkinsfile
+    ansible.builtin.blockinfile:
+      path: "{{ dir }}/sample/Jenkinsfile"
+      create: yes
+      marker: "// {mark} ANSIBLE MANAGED BLOCK"
+      block: |
+        node {
+          stage('Test') {
+            echo 'Hello'
+          }
+        }
+
+  - name: Add, commit, and push it
+    ansible.builtin.shell:
+      chdir: "{{ dir }}/sample"
+      cmd: |
+        git config user.name "{{ gitea['jenkins_id'] }}"
+        git config user.email "jenkins@email.com"
+        git add .
+        git commit -m "Add Jenkinsfile"
+        git push --repo https://{{ gitea['jenkins_id'] }}:{{ gitea['jenkins_pw'] }}@{{ gitea['external'] }}/jenkins-automation/sample.git
+
+- hosts: ci0
+  gather_facts: no
+  vars_files:
+  - vars.yaml
+  tasks:
+  - vars: 
+      title: "Scan gitea"
+      path: "/job/gitea-folder/build?delay=0 -X POST"
+      code: 302
+    ansible.builtin.import_tasks: wait-jenkins.yaml
+

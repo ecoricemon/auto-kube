@@ -5,23 +5,7 @@
   - vars.yaml
   vars:
   - dir: "{{ jenkins['dir'] }}"
-  tasks:
-  - name: Mark jenkins is cert state, so this will cause reconfiguration
-    ansible.builtin.shell: |
-      if [ "$(cat {{ dir }}/jenkins/data/state)" = "ready" ]; then
-        echo "cert" > {{ dir }}/jenkins/data/state
-      fi
-
-- name: Install jenkins plugins
-  ansible.builtin.import_playbook: jenkins-plugins.yaml
-
-- hosts: ci0
-  gather_facts: no
-  vars_files:
-  - vars.yaml
-  vars:
-  - dir: "{{ jenkins['dir'] }}"
-  - token: "{{ lookup('file', '.keep/jenkins_token') }}"
+  - token: "{{ lookup('file', '.keep/gitea-access-token') }}"
   tasks:
   - name: Make sure the dirs exist
     ansible.builtin.file:
@@ -50,7 +34,7 @@
                   scope: GLOBAL
                   token: {{ token }}
                   id: gitea-credentials
-                  description: "The access authority about Gitea server as jenkins user" 
+                  description: "Access authority to Gitea server as jenkins user" 
 
   - name: Make initial system settings
     ansible.builtin.blockinfile:
@@ -75,31 +59,16 @@
           globalJobDslSecurityConfiguration:
             useScriptSecurity: false
 
-  - vars:
-      title: "Wait for jenkins becomes ready"
-      path: "/"
-      code: 200
-    ansible.builtin.import_tasks: wait-jenkins.yaml
-
   - name: Restart jenkins to adapt settings
-    ansible.builtin.shell: docker compose -f {{ dir }}/docker-compose.yaml restart
+    ansible.builtin.shell: |
+      pw=$(cat {{ dir }}/jenkins/data/secrets/initialAdminPassword)
+      docker exec jenkins java -jar /var/jenkins_home/jenkins-cli.jar -s http://localhost:8080 -auth admin:$pw restart
 
   - vars:
       title: "Wait for jenkins becomes ready"
       path: "/"
       code: 200
     ansible.builtin.import_tasks: wait-jenkins.yaml
-
-  - name: Check jenkins cli tool
-    ansible.builtin.stat:
-      path: "{{ dir }}/jenkins/data/jenkins-cli.jar"
-    register: stat_cli
-
-  - name: Download jenkins cli tool
-    ansible.builtin.shell: |
-      find {{ dir }}/jenkins/data/war/WEB-INF/lib/ -name cli-*.jar -print0 | \
-      xargs -0 -n 1 -I {} cp {} {{ dir }}/jenkins/data/jenkins-cli.jar
-    when: not stat_cli['stat']['exists']
 
   - name: Make seed job configuration file
     ansible.builtin.copy:
@@ -116,7 +85,7 @@
           <disabled>false</disabled>
           <blockBuildWhenDownstreamBuilding>false</blockBuildWhenDownstreamBuilding>
           <blockBuildWhenUpstreamBuilding>false</blockBuildWhenUpstreamBuilding>
-          <authToken>init-token</authToken>
+          <authToken>seed-token</authToken>
           <triggers/>
           <concurrentBuild>false</concurrentBuild>
           <builders>
@@ -139,7 +108,7 @@
           <buildWrappers/>
         </project>
 
-  - name: Make an organizatio folder job groovy
+  - name: Make a gitea folder configuration
     ansible.builtin.copy:
       dest: "{{ dir }}/jenkins/data/workspace/seed/gitea_org.groovy"
       content: |
@@ -180,40 +149,51 @@
 
   - vars: 
       title: "Build the jenkins seed job"
-      path: "/job/seed/build?token=init-token" 
+      path: "/job/seed/build?token=seed-token" 
       code: 201
     ansible.builtin.import_tasks: wait-jenkins.yaml
 
-  - vars: 
-      title: "Scan gitea"
-      path: "/job/gitea-folder/build?delay=0 -X POST"
-      code: 302
-    ansible.builtin.import_tasks: wait-jenkins.yaml
-
-  - name: Set security setting to default
-    ansible.builtin.blockinfile:
-      path: "{{ dir }}/jenkins/data/casc_configs/init/security.yaml"
-      create: yes
-      block: |
-        security:
-          # Restore
-          globalJobDslSecurityConfiguration:
-            useScriptSecurity: true
-
-  - name: Mark jenkins is fully configured, so insecure options will be removed on next running
-    ansible.builtin.shell: echo "ready" > {{ dir }}/jenkins/data/state
-
-  - name: Restart jenkins
-    ansible.builtin.shell: docker compose -f {{ dir }}/docker-compose.yaml restart
-
-  - vars:
-      title: "Wait for jenkins becomes ready"
-      path: "/"
-      code: 200
-    ansible.builtin.import_tasks: wait-jenkins.yaml
-
-  - name: Remove initial configurations by renaming
+  # It needs to follow two stpes below to make jenkins create webhook
+  #   1. On the jenkins web UI, go to Manage Jenkins > Configure System, then click Apply or Save button
+  #   2. Go to Gitea Folder > Configure, then click Apply or Save button
+  # But, to generate webhook automatically, We request to create it to gitea manually
+  - name: Check webhook on gitea
     ansible.builtin.shell: |
-      rm -rf {{ dir }}/jenkins/data/casc_configs/.init
-      mv {{ dir }}/jenkins/data/casc_configs/init {{ dir }}/jenkins/data/casc_configs/.init
+      curl -ks https://{{ gitea['external'] }}/api/v1/orgs/jenkins-automation/hooks?access_token={{ token }} \
+        -H 'accept: application/json' | \
+      jq -r .[].config.url | \
+      grep "https://{{ jenkins['external'] }}/gitea-webhook/post"
+    register: grep_webhook
+    failed_when: grep_webhook['rc'] == 2
+
+  - name: Create a webhook on gitea
+    ansible.builtin.shell: >
+      curl -k https://{{ gitea['external'] }}/api/v1/orgs/jenkins-automation/hooks?access_token={{ token }} \
+        -H 'accept: application/json' \
+        -H 'Content-Type: application/json' \
+        -d '{
+          "active": true,
+          "branch_filter": "*",
+          "config": {
+            "content_type": "json",
+            "url": "https://{{ jenkins.external }}/gitea-webhook/post"
+          },
+          "events": [
+            "create",
+            "delete",
+            "push",
+            "pull_request",
+            "pull_request_assign",
+            "pull_request_label",
+            "pull_request_milestone",
+            "pull_request_comment",
+            "pull_request_review_approved",
+            "pull_request_review_rejected",
+            "pull_request_review_comment",
+            "pull_request_sync",
+            "repository"
+          ],
+          "type": "gitea"
+        }'
+    when: grep_webhook['rc'] == 1
 

@@ -95,22 +95,22 @@
         s=$(cat /var/jenkins_home/state)
         while [ "$s" != "ready" ]; do
           if [ "$s" = "cert" ]; then
-            # Second state: Set security options, Processor: ansible initial configuration script
+            # Second state: Set git cert path and disable java secure option for initialization
             git config --global http.sslCAInfo /var/jenkins_home/certs/gitea.crt
             export JAVA_OPTS="-Dhudson.security.csrf.GlobalCrumbIssuerConfiguration.DISABLE_CSRF_PROTECTION=true"
             /usr/local/bin/jenkins.sh 
             exit 0
           else
-            # Very first state: Just wait for setting cert for git and java, Processor: java_keystore container
+            # Very first state: Just wait for 'java_keystore' container to set cert for git and java
             sleep 10
           fi
           sleep 5
           s=$(cat /var/jenkins_home/state)
         done
-        # Final state: Just run jenkins
+        # Final state: Just run jenkins without insecure options
         /usr/local/bin/jenkins.sh 
 
-  - name: Make dockerfile for jenkins (Add docker client, not daemon)
+  - name: Make dockerfile for jenkins (Add docker client only)
     ansible.builtin.blockinfile:
       path: "{{ dir }}/jenkins/Dockerfile"
       create: yes

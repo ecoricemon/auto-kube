@@ -85,7 +85,7 @@
   - name: Get proxy cert to verify webhook target
     ansible.builtin.shell: >
       openssl s_client -connect {{ envoy['domain'] }}:443 < /dev/null 2> /dev/null | \
-      sed -En '/^-----BEGIN CERTIFICATE-----$/,/^-----END CERTIFICATE-----$/p' > {{ dir }}/gitea/jenkins.crt
+      sed -En '/^-----BEGIN CERTIFICATE-----$/,/^-----END CERTIFICATE-----$/p' > {{ dir }}/gitea/proxy.crt
 
   - name: Make gitea docker compose file
     ansible.builtin.blockinfile:
@@ -134,7 +134,7 @@
             - gitea_net
             volumes:
             - {{ dir }}/gitea:/data
-            - {{ dir }}/gitea/jenkins.crt:/etc/ssl/certs/jenkins.crt
+            - {{ dir }}/gitea/proxy.crt:/etc/ssl/certs/proxy.crt
             - /etc/timezone:/etc/timezone:ro
             - /etc/localtime:/etc/localtime:ro
             depends_on:
