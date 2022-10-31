@@ -7,7 +7,19 @@
   - dir: "{{ gitea['dir'] }}"
   tasks:
   - name: Initialize gitea database
-    ansible.builtin.shell: docker exec -u git gitea gitea migrate
+    ansible.builtin.shell: |
+      t=0
+      wait=10
+      try=6
+      end=$((wait*try))
+      while [ $t -lt $end ]; do
+        docker exec -u git gitea gitea migrate
+        if [ $? -eq 0 ]; then
+          exit 0
+        fi
+        sleep $wait
+        t=$((t+wait))
+      done
 
   - name: Check gitea admin user
     ansible.builtin.shell: >

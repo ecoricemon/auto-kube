@@ -43,13 +43,13 @@ base:
     ip: 10.0.3.254
 
 coredns:
-  dir: "{{ base['dir'] }}/coredns"
-  data: "{{ base['dir'] }}/coredns/data"
-  hosts: "{{ base['dir'] }}/coredns/data/hosts"
+  dir: "{{ base['dir'] }}/dns"
+  data: "{{ base['dir'] }}/dns/data"
+  hosts: "{{ base['dir'] }}/dns/data/hosts"
   ver: "{{ base['coredns']['ver'] }}"
 
 envoy:
-  dir: "{{ base['dir'] }}/envoy"
+  dir: "{{ base['dir'] }}/proxy"
   ver: "v{{ base['envoy']['ver'] }}"
   domain: "{{ base['envoy']['domain'] }}"
   alt_names:
@@ -58,7 +58,7 @@ envoy:
   admin_port: "{{ base['envoy']['admin_port'] }}"
 
 harbor:
-  dir: "{{ base['dir'] }}/harbor"
+  dir: "{{ base['dir'] }}/registry"
   ver: "v{{ base['harbor']['ver'] }}"
   domain: "{{ base['harbor']['domain'] }}"
   alt_names: ["{{ base['harbor']['domain'] }}"]
@@ -69,7 +69,7 @@ harbor:
   pw: "{{ base['harbor']['pw'] }}"
 
 gitea:
-  dir: "{{ base['dir'] }}/gitea"
+  dir: "{{ base['dir'] }}/scm"
   ver: "{{ base['gitea']['ver'] }}"
   domain: "{{ base['gitea']['domain'] }}"
   alt_names: ["{{ base['gitea']['domain'] }}"]
@@ -83,7 +83,7 @@ gitea:
   jenkins_pw: "{{ base['gitea']['jenkins_pw'] }}"
 
 jenkins:
-  dir: "{{ base['dir'] }}/jenkins"
+  dir: "{{ base['dir'] }}/ci"
   ver: "{{ base['jenkins']['ver'] }}"
   domain: "{{ base['jenkins']['domain'] }}"
   alt_names: ["{{ base['jenkins']['domain'] }}"]

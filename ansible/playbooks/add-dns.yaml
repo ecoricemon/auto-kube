@@ -1,6 +1,6 @@
 ---
 # Add coredns address to the systemd-resolved
-- name: Make systemd-resolved configuraion dir 
+- name: Make systemd-resolved configuration dir 
   become: yes 
   ansible.builtin.file:
     path: /etc/systemd/resolved.conf.d
