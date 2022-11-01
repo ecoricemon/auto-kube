@@ -15,3 +15,7 @@
       [Resolve]
       DNS={{ hostvars['dns0']['ansible_host'] }}
 
+- name: Restart daemon
+  become: yes 
+  ansible.builtin.shell: systemctl restart systemd-resolved
+

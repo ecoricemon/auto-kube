@@ -5,7 +5,8 @@
   - vars.yaml
   vars:
   - dir: "{{ jenkins['dir'] }}"
-  - token: "{{ lookup('file', '.keep/gitea-access-token') }}"
+  - gitea_token: "{{ lookup('file', '.keep/gitea-access-token') }}"
+  - harbor_pw: "{{ lookup('file', '.keep/harbor-robot-jenkins-secret') }}"
   tasks:
   - name: Make sure the dirs exist
     ansible.builtin.file:
@@ -32,9 +33,22 @@
               credentials:
               - giteaAccessToken:
                   scope: GLOBAL
-                  token: {{ token }}
+                  token: {{ gitea_token }}
                   id: gitea-credentials
                   description: "Access authority to Gitea server as jenkins user" 
+            - domain:
+                name: "{{ harbor['domain'] }}"
+                description: "harbor domain"
+                specifications:
+                - hostnameSpecification:
+                    includes: "{{ harbor['domain'] }}"
+              credentials:
+              - usernamePassword:
+                  scope: GLOBAL
+                  username: "robot$jenkins"
+                  password: {{ harbor_pw }}
+                  id: harbor-credentials
+                  description: "Access authority to Harbor server as jenkins bot" 
 
   - name: Make initial system settings
     ansible.builtin.blockinfile:
@@ -55,7 +69,7 @@
       create: yes
       block: |
         security:
-          # It will be enabled after initilization
+          # It will be enabled after initialization
           globalJobDslSecurityConfiguration:
             useScriptSecurity: false
 
@@ -65,7 +79,7 @@
       docker exec jenkins java -jar /var/jenkins_home/jenkins-cli.jar -s http://localhost:8080 -auth admin:$pw restart
 
   - vars:
-      title: "Wait for jenkins becomes ready"
+      title: "Wait for jenkins to become ready"
       path: "/"
       code: 200
     ansible.builtin.import_tasks: wait-jenkins.yaml
@@ -153,13 +167,19 @@
       code: 201
     ansible.builtin.import_tasks: wait-jenkins.yaml
 
+  - vars:
+      title: "Check folder generation"
+      path: "/job/gitea-folder/"
+      code: 200
+    ansible.builtin.import_tasks: wait-jenkins.yaml
+
   # It needs to follow two stpes below to make jenkins create webhook
   #   1. On the jenkins web UI, go to Manage Jenkins > Configure System, then click Apply or Save button
   #   2. Go to Gitea Folder > Configure, then click Apply or Save button
   # But, to generate webhook automatically, We request to create it to gitea manually
   - name: Check webhook on gitea
     ansible.builtin.shell: |
-      curl -ks https://{{ gitea['external'] }}/api/v1/orgs/jenkins-automation/hooks?access_token={{ token }} \
+      curl -ks https://{{ gitea['external'] }}/api/v1/orgs/jenkins-automation/hooks?access_token={{ gitea_token }} \
         -H 'accept: application/json' | \
       jq -r .[].config.url | \
       grep "https://{{ jenkins['external'] }}/gitea-webhook/post"
@@ -168,7 +188,7 @@
 
   - name: Create a webhook on gitea
     ansible.builtin.shell: >
-      curl -k https://{{ gitea['external'] }}/api/v1/orgs/jenkins-automation/hooks?access_token={{ token }} \
+      curl -k https://{{ gitea['external'] }}/api/v1/orgs/jenkins-automation/hooks?access_token={{ gitea_token }} \
         -H 'accept: application/json' \
         -H 'Content-Type: application/json' \
         -d '{

@@ -20,6 +20,8 @@
         sleep $wait
         t=$((t+wait))
       done
+      echo 'Timeout'
+      exit 1
 
   - name: Check gitea admin user
     ansible.builtin.shell: >

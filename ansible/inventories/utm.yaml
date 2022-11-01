@@ -15,7 +15,7 @@ proxy:
 registry:
   hosts:
     registry0:
-      ansible_host: 192.168.0.208
+      ansible_host: 192.168.0.209
       ansible_user: kube
 
 git:

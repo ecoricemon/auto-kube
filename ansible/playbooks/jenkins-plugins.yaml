@@ -52,7 +52,7 @@
       docker exec jenkins java -jar /var/jenkins_home/jenkins-cli.jar -s http://localhost:8080 -auth admin:$pw restart
 
   - vars:
-      title: "Wait for jenkins becomes ready"
+      title: "Wait for jenkins to become ready"
       path: "/"
       code: 200
     ansible.builtin.import_tasks: wait-jenkins.yaml

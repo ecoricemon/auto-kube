@@ -35,6 +35,8 @@
     ansible.builtin.import_tasks: docker.yaml
 - name: Install harbor
   ansible.builtin.import_playbook: harbor.yaml
+- name: Configure harbor
+  ansible.builtin.import_playbook: harbor-conf.yaml
 
 # Set up SCM(git)
 - hosts: git

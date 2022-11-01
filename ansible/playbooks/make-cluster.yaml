@@ -8,8 +8,8 @@
 - name: Generate ssh key for sync
   ansible.builtin.import_playbook: ssh.yaml
   vars:
-    key_send: cp0
-    key_recv: cluster:!cp0
+    key_sender: cp0
+    key_receiver: cluster:!cp0
 
 - name: Initialize cluter
   ansible.builtin.import_playbook: cluster-init.yaml

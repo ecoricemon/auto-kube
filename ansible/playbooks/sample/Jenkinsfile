@@ -1,0 +1,47 @@
+node {
+  def buildId = "${env.BUILD_ID}"
+
+  checkout scm
+
+  stage('Login to registry') {
+    withCredentials([usernamePassword(credentialsId: 'harbor-credentials', 
+      usernameVariable: 'regUser', passwordVariable: 'regPw')]) {
+      sh 'echo "$regPw" | docker login -u "$regUser" --password-stdin HARBOR_URL'
+    }
+  }
+
+  stage('Build and Push base images') {
+    sh '''
+      DOCKER_BUILDKIT=1 docker build -t HARBOR_URL/library/myprj/myapp-base:dev0.1 --target base_dev .
+      DOCKER_BUILDKIT=1 docker build -t HARBOR_URL/library/myprj/myapp-base:test0.1 --target base_test .
+      docker push HARBOR_URL/library/myprj/myapp-base:dev0.1
+      docker push HARBOR_URL/library/myprj/myapp-base:test0.1
+    '''
+  }
+
+  try {
+    stage('Build') {
+      sh """
+        DOCKER_BUILDKIT=1 docker build -t HARBOR_URL/library/myprj/myapp:dev${buildId} --target dev .
+        DOCKER_BUILDKIT=1 docker build -t myprj/myapp:test --target test_unit .
+      """
+    }
+
+    stage('Test') {
+      sh 'docker run --rm myprj/myapp:test'
+    }
+
+    stage('Push') {
+      sh "docker push HARBOR_URL/library/myprj/myapp:dev${buildId}"
+    }
+  } finally {
+    stage('Clear') {
+      sh """
+        docker logout HARBOR_URL
+        docker image rm -f HARBOR_URL/library/myprj/myapp:dev${buildId}
+        docker image rm -f myprj/myapp:test
+      """
+    }
+  }
+}
+
