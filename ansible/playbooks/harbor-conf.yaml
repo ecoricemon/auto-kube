@@ -8,7 +8,9 @@
   tasks:
   - ansible.builtin.package_facts:
       manager: auto
-  
+ 
+  - ansible.builtin.import_tasks: wait-apt.yaml
+ 
   - name: Install jq to parse json
     become: yes
     ansible.builtin.apt:
@@ -21,7 +23,7 @@
     ansible.builtin.shell: |
       t=0 
       wait=15
-      try=6
+      try=12
       end=$((wait*try))
       while [ $t -lt $end ]; do
         ready=$(curl -ksu admin:{{ harbor['pw'] }} https://{{ harbor['url'] }}/api/v2.0/health | jq -r .status)

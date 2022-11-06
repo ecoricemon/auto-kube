@@ -1,4 +1,4 @@
-import sys
+import sys, subprocess
 import yaml
 
 def parseYaml(path: str) -> dict:
@@ -13,9 +13,22 @@ def getUrl(var: dict, key: str) -> str:
     sd = var[key]['external'][0:i]
     return 'https://{}.{}'.format(sd, dn)
 
+def genDashboardToekn(inv: dict) -> str:
+    # Make ssh command
+    host = inv['cluster']['hosts']['cp0']['ansible_host']
+    user = inv['cluster']['hosts']['cp0']['ansible_user']
+    jump = []
+    if inv['cluster']['hosts']['cp0'].get('ansible_ssh_common_args'):
+        jump = inv['cluster']['hosts']['cp0']['ansible_ssh_common_args'].split()
+    cmd = ['ssh'] + jump + [user + '@' + host] + ['kubectl', 'create', 'token', '-n', 'kubernetes-dashboard', 'admin-user']
+    # Execute the commnad and return the result
+    p = subprocess.Popen(cmd, stdout=subprocess.PIPE)	
+    stdout, _ = p.communicate()
+    return stdout.decode('utf-8')
+
 if __name__ == '__main__':
     args = sys.argv[1:]
-    if len(args) != 1:
+    if len(args) != 1 or (args[0] != 'vbox' and args[0] != 'utm'):
         print("need 'vbox' or 'utm'")
         exit(1)
     inv = parseYaml('inventories/{}.yaml'.format(args[0]))
@@ -45,4 +58,6 @@ if __name__ == '__main__':
     # Show k8s dashboard info
     print('[K8s]')
     print(' |_ Dashboard IP:', var['base']['dashboard']['ip'])
+    print(' |_ Dashboard Token: Generating... (Old one will be expired)')
+    print(genDashboardToekn(inv))
 

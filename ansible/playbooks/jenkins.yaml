@@ -111,6 +111,8 @@
         # Final state: Just run jenkins without insecure options
         /usr/local/bin/jenkins.sh 
 
+  - ansible.builtin.import_tasks: wait-apt.yaml
+
   - name: Make dockerfile for jenkins (Add docker client only)
     ansible.builtin.blockinfile:
       path: "{{ dir }}/jenkins/Dockerfile"
@@ -244,6 +246,8 @@
   - ansible.builtin.package_facts:
       manager: auto
 
+  - ansible.builtin.import_tasks: wait-apt.yaml
+
   - name: Install jq to parse json
     become: yes
     ansible.builtin.apt:
@@ -264,12 +268,21 @@
     ansible.builtin.shell: docker compose -f {{ dir }}/docker-compose.yaml up -d
     when: jenkins_num['stdout'] != "4"
 
-  - vars:
-      title: "Wait for jenkins to become ready"
-      path: "/"
-      code: 200
-    ansible.builtin.import_tasks: wait-jenkins.yaml
-    when: jenkins_num['stdout'] != "4"
+  - name: Wait for initial password to be generated
+    ansible.builtin.shell: |
+      t=0
+      wait=6
+      try=15
+      end=$((wait*try))
+      while [ ! -f "{{ dir }}/jenkins/data/secrets/initialAdminPassword" ]; do
+        if [ $t -lt $end ]; then
+          sleep $wait
+          t=$((t+wait))
+        else
+          echo 'Timeout'
+          exit 1
+        fi
+      done
 
   - name: Copy initial password
     ansible.builtin.fetch:

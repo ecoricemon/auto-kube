@@ -155,6 +155,8 @@
   - ansible.builtin.package_facts:
       manager: auto
 
+  - ansible.builtin.import_tasks: wait-apt.yaml
+
   - name: Install jq to parse json
     become: yes
     ansible.builtin.apt:

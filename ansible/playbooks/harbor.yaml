@@ -101,6 +101,8 @@
     when: ansible_facts['architecture'] == 'aarch64'
     failed_when: grep_arm['rc'] == 2
 
+  - ansible.builtin.import_tasks: wait-apt.yaml
+
   - name: Install prerequisites for harbor-arm
     become: yes
     ansible.builtin.apt:

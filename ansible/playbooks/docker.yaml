@@ -3,6 +3,8 @@
 - ansible.builtin.package_facts:
     manager: auto
 
+- ansible.builtin.import_tasks: wait-apt.yaml
+
 - name: Install docker engine
   become: yes
   ansible.builtin.apt:

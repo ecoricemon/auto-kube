@@ -8,6 +8,8 @@
   - ansible.builtin.package_facts:
       manager: auto
 
+  - ansible.builtin.import_tasks: wait-apt.yaml
+
   - name: Install kube prerequisites
     become: yes
     ansible.builtin.apt:
@@ -30,10 +32,11 @@
     ansible.builtin.shell: apt update
     when: "'kubelet' not in ansible_facts.packages"
 
+  - ansible.builtin.import_tasks: wait-apt.yaml
+
   - name: Install kube
     become: yes
     ansible.builtin.apt:
-      update_cache: yes
       pkg:
       - kubelet={{ kubelet['apt_ver'] }}
       - kubeadm={{ kubeadm['apt_ver'] }}

@@ -17,10 +17,11 @@
     ansible.builtin.shell: apt update
     when: "'helm' not in ansible_facts.packages"
 
+  - ansible.builtin.import_tasks: wait-apt.yaml
+
   - name: Install helm
     become: yes
     ansible.builtin.apt:
-      update_cache: yes
       pkg:
       - apt-transport-https
       - helm
