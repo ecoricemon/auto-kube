@@ -9,9 +9,9 @@
   become: yes
   ansible.builtin.apt:
     pkg:
-    - docker-ce
-    - docker-ce-cli
-    - docker-compose-plugin
+    - docker-ce={{ docker['engine_ver'] }}
+    - docker-ce-cli={{ docker['engine_ver'] }}
+    - docker-compose-plugin={{ docker['compose_ver'] }}
   when: "'docker-ce' not in ansible_facts.packages"
 
 - name: Add docker group

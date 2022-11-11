@@ -1,6 +1,10 @@
 ---
 base:
   dir: "/home/{{ ansible_user }}/.kube-ansible"
+  docker:
+    runtime_ver: 1.6.9
+    engine_ver: 20.10.21
+    compose_ver: 2.12.2
   coredns:
     ver: 1.8.7
   envoy:
@@ -26,7 +30,7 @@ base:
     domain: jenkins.ci
     port: 12443
     ver: 2.373-jdk11
-    docker_ver: 20.10.19-dind
+    docker_ver: 20.10.19
     nginx_ver: 1.23.1
   kube:
     ver: 1.24.6
@@ -37,10 +41,17 @@ base:
       ver: 1.12.2
   metallb:
     ver: 0.13.5
-    ip_pool: 10.0.3.200-10.0.3.254
+    ip_pool: 192.168.0.200-192.168.0.254
+    #ip_pool: 10.0.3.200-10.0.3.254
   dashboard:
     chart_ver: 5.10.0   
-    ip: 10.0.3.254
+    ip: 192.168.0.254
+    #ip: 10.0.3.254
+
+docker:
+  runtime_ver: "{{ base['docker']['runtime_ver'] }}-1"
+  engine_ver: "5:{{ base['docker']['engine_ver'] }}~3-0~ubuntu-focal"
+  compose_ver: "{{ base['docker']['compose_ver'] }}~ubuntu-focal"
 
 coredns:
   dir: "{{ base['dir'] }}/dns"
@@ -89,7 +100,8 @@ jenkins:
   alt_names: ["{{ base['jenkins']['domain'] }}"]
   port: "{{ base['jenkins']['port'] }}"
   external: "ci.{{ base['envoy']['domain'] }}"
-  docker_ver: "{{ base['jenkins']['docker_ver'] }}"
+  docker_ver: "{{ base['jenkins']['docker_ver'] }}-dind"
+  docker_cli_ver: "5:{{ base['jenkins']['docker_ver'] }}~3-0~debian-bullseye"
   nginx_ver: "{{ base['jenkins']['nginx_ver'] }}"
 
 containerd:

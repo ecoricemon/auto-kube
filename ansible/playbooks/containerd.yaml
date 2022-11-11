@@ -34,6 +34,6 @@
   become: yes
   ansible.builtin.apt:
     pkg:
-    - containerd.io
+    - containerd.io={{ docker['runtime_ver'] }}
   when: "'containerd.io' not in ansible_facts.packages"
 
