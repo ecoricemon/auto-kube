@@ -244,7 +244,7 @@
             command: --storage-driver=overlay2
 
   - ansible.builtin.package_facts:
-      manager: auto
+      manager: apt
 
   - ansible.builtin.import_tasks: wait-apt.yaml
 

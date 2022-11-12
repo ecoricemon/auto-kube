@@ -4,19 +4,19 @@
 - hosts: "{{ key_sender }}"
   gather_facts: no
   tasks:
-  - name: Check id_rsa and id_rsa.pub
+  - name: Check ssh key from sender
     ansible.builtin.find:
       path: ~/.ssh
-      patterns: 'id_rsa,id_rsa.pub'
-    register: sshfiles
+      patterns: 'id_ed25519,id_ed25519.pub'
+    register: ssh_keys
 
   - name: Create ssh key
-    ansible.builtin.shell: ssh-keygen -t rsa -f ~/.ssh/id_rsa -N ''
-    when: sshfiles.matched != 2
+    ansible.builtin.shell: ssh-keygen -t ed25519 -f ~/.ssh/id_ed25519 -N ''
+    when: ssh_keys.matched != 2
 
   - name: Copy ssh key to control machine
     ansible.builtin.fetch:
-      src: ~/.ssh/id_rsa.pub
+      src: ~/.ssh/id_ed25519.pub
       dest: ./
       flat: yes
 
@@ -26,20 +26,20 @@
   tasks:
   - name: Copy ssh key to nodes
     ansible.builtin.copy:
-      src: ./id_rsa.pub
-      dest: ~/.ssh/id_rsa.pub.tmp
+      src: ./id_ed25519.pub
+      dest: ~/.ssh/id_ed25519.pub.tmp
 
   - name: Check ssh key
-    ansible.builtin.shell: cat ~/.ssh/authorized_keys | grep "$(cat ~/.ssh/id_rsa.pub.tmp)"
+    ansible.builtin.shell: cat ~/.ssh/authorized_keys | grep "$(cat ~/.ssh/id_ed25519.pub.tmp)"
     register: grep_key
     failed_when: grep_key.rc == 2
 
   - name: Append ssh key to authorized_keys
-    ansible.builtin.shell: cat ~/.ssh/id_rsa.pub.tmp >> ~/.ssh/authorized_keys
+    ansible.builtin.shell: cat ~/.ssh/id_ed25519.pub.tmp >> ~/.ssh/authorized_keys
     when: grep_key.rc == 1
 
   - ansible.builtin.file:
-      path: ~/.ssh/id_rsa.pub.tmp
+      path: ~/.ssh/id_ed25519.pub.tmp
       state: absent
 
 # Remove ssh key from control machine
@@ -48,7 +48,7 @@
   tasks:
   - name: Remove ssh key from control machine
     ansible.builtin.file:
-      path: ./id_rsa.pub
+      path: ./id_ed25519.pub
       state: absent
 
 # Create known hosts file
@@ -71,7 +71,7 @@
     register: keys
     failed_when: keys.rc == 255
 
-  - ansible.builtin.shell: ssh-keyscan -H -t ecdsa "{{ hostvars[item['item']]['ansible_host'] }}" >> ~/.ssh/known_hosts
+  - ansible.builtin.shell: ssh-keyscan -H -t ed25519 "{{ hostvars[item['item']]['ansible_host'] }}" >> ~/.ssh/known_hosts
     when: item.rc == 1
     loop: "{{ keys.results }}"
 

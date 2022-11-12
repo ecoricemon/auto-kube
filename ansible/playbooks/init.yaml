@@ -4,6 +4,8 @@
 
 - hosts: cluster
   gather_facts: no
+  vars_files:
+  - vars.yaml
   tasks:
   - name: Add dns address to the hosts
     ansible.builtin.import_tasks: add-dns.yaml
@@ -12,6 +14,8 @@
 
 - hosts: cp0
   gather_facts: no
+  vars_files:
+  - vars.yaml
   tasks:
   - name: Install docker
     ansible.builtin.import_tasks: docker.yaml

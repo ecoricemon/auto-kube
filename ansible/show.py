@@ -1,4 +1,4 @@
-import sys, subprocess
+import subprocess
 import yaml
 
 def parseYaml(path: str) -> dict:
@@ -27,11 +27,7 @@ def genDashboardToekn(inv: dict) -> str:
     return stdout.decode('utf-8')
 
 if __name__ == '__main__':
-    args = sys.argv[1:]
-    if len(args) != 1 or (args[0] != 'vbox' and args[0] != 'utm'):
-        print("need 'vbox' or 'utm'")
-        exit(1)
-    inv = parseYaml('inventories/{}.yaml'.format(args[0]))
+    inv = parseYaml('inventories/vbox.yaml')
     var = parseYaml('playbooks/vars.yaml')
 
     # Show dns Info
@@ -52,7 +48,7 @@ if __name__ == '__main__':
     # Show ci info
     print('[CI]')
     print(' |_ URL:', getUrl(var, 'jenkins'))
-    print(' |_ Admin ID:', var['base']['gitea']['admin_id'])
+    print(' |_ Admin ID: admin')
     with open('playbooks/.keep/jenkins-admin-pw', 'r') as f:
         print(' |_ Admin PW:', f.read(), end='')
     # Show k8s dashboard info

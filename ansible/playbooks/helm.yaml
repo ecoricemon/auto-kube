@@ -3,7 +3,7 @@
   gather_facts: no
   tasks:
   - ansible.builtin.package_facts:
-      manager: auto
+      manager: apt
 
   - name: Add apt repository
     become: yes

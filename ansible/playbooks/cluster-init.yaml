@@ -18,7 +18,6 @@
       srcrepo=$(kubeadm config print init-defaults | grep imageRepository | sed "s/^imageRepository: //") && \
       kubeadm init \
         --cri-socket "unix:///run/containerd/containerd.sock" \
-        --pod-network-cidr "10.244.0.0/16" \
         --apiserver-advertise-address "{{ hostvars['cp0']['ansible_host'] }}" \
         --image-repository "{{ harbor['prj'] }}/$srcrepo" \
         --kubernetes-version "{{ kubeadm['cmd_ver'] }}" \

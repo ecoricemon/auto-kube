@@ -1,22 +1,24 @@
 #!/bin/sh
 
-if [ $# -lt 1 ]; then
-    echo "Usage: ./init.sh type"
-    echo "type: vbox | utm"
-	exit 0
+# Generate ssh keys if there are no keys
+ls ~/.ssh/id*.pub > /dev/null 2> /dev/null
+if [ $? -ne 0 ]; then
+    ssh-keygen -t ed25519 -f ~/.ssh/id_ed25519 -N ''
 fi
 
-type=$1
+# Find out all remote addresses and user from the inventory file
+inv_path='inventories/vbox.yaml'
+remotes=$(cat $inv_path | grep ansible_host: | sed -E "s/[ $(echo -e '\t')]*ansible_host: ([0-9.]+)/\1/" | sort | uniq)
+user=$(cat $inv_path | grep ansible_user: | head -1 | sed -E "s/[ $(echo -e '\t')]*ansible_user: (.*)/\1/")
 
-if [ $type = "vbox" ]; then
-	for remote in 10.0.3.10 10.0.3.11; do
-		ssh-copy-id -o ProxyJump="kube@localhost:8022" kube@$remote 2>/dev/null
-	done
-	ansible-playbook -i inventories/vbox.yaml -K playbooks/init.yaml
-elif [ $type = "utm" ]; then
-	for remote in 192.168.0.210 192.168.0.211; do
-		ssh-copy-id kube@$remote 2>/dev/null
-	done
-	ansible-playbook -i inventories/utm.yaml -K playbooks/init.yaml
-fi
+# Copy the ssh public key to the remotes
+alias my-ssh-copy='ssh-copy-id -o ConnectionAttempts=1 -o ConnectTimeout=1'
+for remote in $remotes; do
+    echo "Copying ssh key to $remote ..."
+    my-ssh-copy $user@$remote 2> /dev/null
+done
+unalias my-ssh-copy
+
+# Run ansible scripts
+ansible-playbook -i $inv_path -K playbooks/init.yaml
 

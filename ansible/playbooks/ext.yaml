@@ -2,6 +2,8 @@
 # Set up DNS
 - hosts: dns
   gather_facts: no
+  vars_files:
+  - vars.yaml
   tasks:
   - name: Install containerd
     ansible.builtin.import_tasks: containerd.yaml
@@ -13,6 +15,8 @@
 # Set up proxy
 - hosts: proxy
   gather_facts: no
+  vars_files:
+  - vars.yaml
   tasks:
   - name: Add dns address to the hosts
     ansible.builtin.import_tasks: add-dns.yaml
@@ -26,6 +30,8 @@
 # Set up registry(harbor)
 - hosts: registry
   gather_facts: no
+  vars_files:
+  - vars.yaml
   tasks:
   - name: Add dns address to the hosts
     ansible.builtin.import_tasks: add-dns.yaml
@@ -41,6 +47,8 @@
 # Set up SCM(git)
 - hosts: git
   gather_facts: no
+  vars_files:
+  - vars.yaml
   tasks:
   - name: Add dns address to the hosts
     ansible.builtin.import_tasks: add-dns.yaml
@@ -56,6 +64,8 @@
 # Set up CI(jenkins)
 - hosts: ci
   gather_facts: no
+  vars_files:
+  - vars.yaml
   tasks:
   - name: Add dns address to the hosts
     ansible.builtin.import_tasks: add-dns.yaml
