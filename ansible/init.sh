@@ -15,7 +15,7 @@ user=$(cat $inv_path | grep ansible_user: | head -1 | sed -E "s/[ $(echo -e '\t'
 alias my-ssh-copy='ssh-copy-id -o ConnectionAttempts=1 -o ConnectTimeout=1'
 for remote in $remotes; do
     echo "Copying ssh key to $remote ..."
-    my-ssh-copy $user@$remote 2> /dev/null
+    my-ssh-copy $user@$remote
 done
 unalias my-ssh-copy
 

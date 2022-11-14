@@ -205,7 +205,7 @@
             - -c
             - |
               touch /var/jenkins_home/state
-              if [ -z $(cat /var/jenkins_home/state) ]; then
+              if [ -z "$(cat /var/jenkins_home/state)" ]; then
                 cd /keystore
                 cp -rn /opt/java/openjdk/lib/security/* ./
                 if [ ! -f gitea.crt ]; then

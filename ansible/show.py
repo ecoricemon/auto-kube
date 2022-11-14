@@ -17,13 +17,18 @@ def genDashboardToekn(inv: dict) -> str:
     # Make ssh command
     host = inv['cluster']['hosts']['cp0']['ansible_host']
     user = inv['cluster']['hosts']['cp0']['ansible_user']
-    jump = []
+    ssharg = []
     if inv['cluster']['hosts']['cp0'].get('ansible_ssh_common_args'):
-        jump = inv['cluster']['hosts']['cp0']['ansible_ssh_common_args'].split()
-    cmd = ['ssh'] + jump + [user + '@' + host] + ['kubectl', 'create', 'token', '-n', 'kubernetes-dashboard', 'admin-user']
-    # Execute the commnad and return the result
-    p = subprocess.Popen(cmd, stdout=subprocess.PIPE)	
-    stdout, _ = p.communicate()
+        ssharg = inv['cluster']['hosts']['cp0']['ansible_ssh_common_args'].split()
+    ssh = ['ssh'] + ssharg + [user + '@' + host]
+    # Generate secret which will be used to delete generating token
+    cmd = ssh + ['kubectl', 'delete', 'secret', '-n', 'kubernetes-dashboard', 'admin-user-secret']
+    subprocess.Popen(cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE).communicate() # Ignore stdout and stderr
+    cmd = ssh + ['kubectl', 'create', 'secret', '-n', 'kubernetes-dashboard', 'generic', 'admin-user-secret']
+    subprocess.Popen(cmd, stdout=subprocess.PIPE).communicate()
+    # Generate token, which has 100years lifetime, binded with the secret
+    cmd = ssh + ['kubectl', 'create', 'token', '-n', 'kubernetes-dashboard', 'admin-user', '--duration', '876000h', '--bound-object-kind', 'Secret', '--bound-object-name', 'admin-user-secret']
+    stdout, _ = subprocess.Popen(cmd, stdout=subprocess.PIPE).communicate()
     return stdout.decode('utf-8')
 
 if __name__ == '__main__':

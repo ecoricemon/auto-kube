@@ -59,7 +59,7 @@
         tag=$(echo $dest | sed "s#{{ harbor['url'] }}/##" | cut -d ':' -f 2)
         echo $dest >> {{ dir }}/dest-images
         existtags=$(curl -ksu 'robot$kube':{{ harbor_pw }} https://{{ harbor['url'] }}/v2/$repo/tags/list)
-        if [ -z $(echo $existtags | grep $tag) ]; then
+        if [ -z "$(echo $existtags | grep $tag)" ]; then
           docker image pull $src
           docker image tag $src $dest
           docker image push $dest
