@@ -44,7 +44,10 @@ base:
     ip_pool: 192.168.0.100-192.168.0.199
   dashboard:
     chart_ver: 5.10.0   
-    ip: 192.168.0.100
+    ip: 192.168.0.199
+  argocd:
+    ver: 2.5.2
+    ip: 192.168.0.198
 
 docker:
   runtime_ver: "{{ base['docker']['runtime_ver'] }}-1"
@@ -130,4 +133,9 @@ dashboard:
   dir: "{{ base['dir'] }}/dashboard"
   ver: "{{ base['dashboard']['chart_ver'] }}"
   ip: "{{ base['dashboard']['ip'] }}"
+
+argocd:
+  dir: "{{ base['dir'] }}/argocd"
+  ver: "v{{ base['argocd']['ver'] }}"
+  ip: "{{ base['argocd']['ip'] }}"
 

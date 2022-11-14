@@ -43,7 +43,8 @@
       sed -Ei "s/(^[ $(echo -e '\t')]*tag: [a-zA-Z0-9\".]*)@([a-zA-Z0-9:]*)/\1/" {{ dir }}/cilium/values.yaml
       sed -i "s/useDigest: true/useDigest: false/" {{ dir }}/cilium/values.yaml
       helm template cilium {{ dir }}/cilium -n kube-system > {{ dir }}/rendered.yaml
-      cat {{ dir }}/rendered.yaml | grep -E "^[ $(echo -e '\t')]*image:" | sed "s/[ $(echo -e '\t')]*image: //; s/\"//g" > {{ dir }}/src-images
+      cat {{ dir }}/rendered.yaml | grep -E "^[ $(echo -e '\t')]*image:" | sed "s/[ $(echo -e '\t')]*image: //; s/\"//g" | sort | uniq > {{ dir }}/src-images
+      cat {{ dir }}/src-images | sed "s#^#{{ harbor['prj'] }}/#" > {{ dir }}/dest-images
     when: grep_cilium['rc'] == 1
 
   - name: Login to harbor
@@ -56,10 +57,9 @@
       i=1
       while [ $i -le $linenum ]; do
         src=$(sed "$i!d;q" {{ dir }}/src-images)
-        dest={{ harbor['prj'] }}/$src
+        dest=$(sed "$i!d;q" {{ dir }}/dest-images)
         repo=$(echo $dest | sed "s#{{ harbor['url'] }}/##" | cut -d ':' -f 1)
         tag=$(echo $dest | sed "s#{{ harbor['url'] }}/##" | cut -d ':' -f 2)
-        echo $dest >> {{ dir }}/dest-images
         existtags=$(curl -ksu 'robot$kube':{{ harbor_pw }} https://{{ harbor['url'] }}/v2/$repo/tags/list)
         if [ -z "$(echo $existtags | grep $tag)" ]; then
           docker image pull $src
