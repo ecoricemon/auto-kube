@@ -1,0 +1,30 @@
+---
+- hosts: cp0
+  gather_facts: no
+  vars_files:
+  - vars.yaml
+  vars:
+  - dir: "{{ argocd['dir'] }}/conf"
+  tasks:
+  - name: Make sure the dir exist
+    ansible.builtin.file:
+      path: "{{ dir }}"
+      state: directory
+
+  - name: Add dns address to the k8s coredns
+    ansible.builtin.shell:
+      chdir: "{{ dir }}"
+      cmd: |
+        kubectl get configmaps -n kube-system coredns -o yaml > configmaps-coredns.yaml
+        start_line=$(cat configmaps-coredns.yaml | grep -En '^data:' | cut -d ':' -f 1)
+        lines=$(tail -n +$((start_line+1)) configmaps-coredns.yaml | grep -En '^[a-z]+' | head -1 | cut -d ':' -f 1)
+        tail -n +$start_line configmaps-coredns.yaml | head -n $lines > patch-configmaps-coredns.yaml
+        if [ -z "$(cat patch-configmaps-coredns.yaml | grep gitea.git)" ]; then
+          echo "    {{ gitea['domain'] }}:53 {" >> patch-configmaps-coredns.yaml
+          echo "      errors" >> patch-configmaps-coredns.yaml
+          echo "      cache 30" >> patch-configmaps-coredns.yaml
+          echo "      forward . {{ hostvars['dns0']['ansible_host'] }}" >> patch-configmaps-coredns.yaml
+          echo "    }" >> patch-configmaps-coredns.yaml
+          kubectl patch configmaps -n kube-system coredns --patch-file patch-configmaps-coredns.yaml
+        fi
+
