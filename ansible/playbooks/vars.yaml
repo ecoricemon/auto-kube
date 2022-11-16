@@ -12,7 +12,7 @@ base:
     ver: 1.23.1
     admin_port: 10001
   harbor:
-    domain: harbor.registry
+    domain: harbor.reg
     port: 10443
     ver: 2.6.0
     pw: admin
@@ -77,7 +77,7 @@ harbor:
   port: "{{ base['harbor']['port'] }}"
   url: "{{ base['harbor']['domain'] }}:{{ base['harbor']['port'] }}" 
   prj: "{{ base['harbor']['domain'] }}:{{ base['harbor']['port'] }}/library" 
-  external: "registry.{{ base['envoy']['domain'] }}"
+  external: "reg.{{ base['envoy']['domain'] }}"
   pw: "{{ base['harbor']['pw'] }}"
 
 gitea:

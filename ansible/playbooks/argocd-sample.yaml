@@ -6,5 +6,5 @@
   tasks:
   - name: Apply argo cd sample
     ansible.builtin.shell: >
-      kubectl apply -f https://{{ gitea['url'] }}/jenkins-automation/sample-config/raw/branch/main/myapp-application.yaml
+      kubectl apply -f https://{{ gitea['external'] }}/jenkins-automation/sample-config/raw/branch/main/myapp-application.yaml
 

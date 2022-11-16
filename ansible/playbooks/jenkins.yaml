@@ -260,7 +260,7 @@
     ansible.builtin.shell: docker compose -f {{ dir }}/docker-compose.yaml ps --format json | jq length
     register: jenkins_num
 
-  - name: Shut down jenkins if it's not running
+  - name: Shut down jenkins if it's not totally running
     ansible.builtin.shell: docker compose -f {{ dir }}/docker-compose.yaml down
     when: jenkins_num['stdout'] != "4"
 

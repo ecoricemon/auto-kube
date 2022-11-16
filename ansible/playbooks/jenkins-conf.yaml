@@ -37,11 +37,11 @@
                   id: gitea-credentials
                   description: "Access authority to Gitea server as jenkins user" 
             - domain:
-                name: "{{ harbor['domain'] }}"
+                name: "{{ harbor['external'] }}"
                 description: "harbor domain"
                 specifications:
                 - hostnameSpecification:
-                    includes: "{{ harbor['domain'] }}"
+                    includes: "{{ harbor['external'] }}"
               credentials:
               - usernamePassword:
                   scope: GLOBAL

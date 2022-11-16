@@ -20,7 +20,7 @@
         lines=$(tail -n +$((start_line+1)) configmaps-coredns.yaml | grep -En '^[a-z]+' | head -1 | cut -d ':' -f 1)
         tail -n +$start_line configmaps-coredns.yaml | head -n $lines > patch-configmaps-coredns.yaml
         if [ -z "$(cat patch-configmaps-coredns.yaml | grep gitea.git)" ]; then
-          echo "    {{ gitea['domain'] }}:53 {" >> patch-configmaps-coredns.yaml
+          echo "    {{ gitea['external'] }}:53 {" >> patch-configmaps-coredns.yaml
           echo "      errors" >> patch-configmaps-coredns.yaml
           echo "      cache 30" >> patch-configmaps-coredns.yaml
           echo "      forward . {{ hostvars['dns0']['ansible_host'] }}" >> patch-configmaps-coredns.yaml
@@ -35,7 +35,7 @@
 
   - name: Get the gitea cert
     ansible.builtin.shell: >
-      openssl s_client -connect {{ gitea['url'] }} < /dev/null 2> /dev/null | \
+      openssl s_client -connect {{ gitea['external'] }}:443 < /dev/null 2> /dev/null | \
       sed -En '/^-----BEGIN CERTIFICATE-----$/,/^-----END CERTIFICATE-----$/p' > {{ dir }}/gitea.crt
     when: not stat_gitea['stat']['exists']
 
@@ -69,7 +69,7 @@
           -H "Authorization: Bearer $token" \
           -d '{
             "items": [{
-              "serverName": "{{ gitea['domain'] }}",
+              "serverName": "{{ gitea['external'] }}",
               "certType": "https",
               "certData": "'"$data"'"
             }]

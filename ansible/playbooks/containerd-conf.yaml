@@ -22,16 +22,16 @@
       sed -i 's#config_path = "#config_path = "/etc/containerd/certs.d#' /etc/containerd/config.toml
       sed -i 's/SystemdCgroup = false/SystemdCgroup = true/' /etc/containerd/config.toml
 
-  - name: "Create /etc/containerd/certs.d/{{ harbor['url'] }}/hosts.toml"
+  - name: "Create /etc/containerd/certs.d/{{ harbor['external'] }}/hosts.toml"
     become: yes
     ansible.builtin.blockinfile:
-      path: "/etc/containerd/certs.d/{{ harbor['url'] }}/hosts.toml"
+      path: "/etc/containerd/certs.d/{{ harbor['external'] }}/hosts.toml"
       create: yes
       block: |
-        server = "https://{{ harbor['url'] }}"
+        server = "https://{{ harbor['external'] }}"
 
-        [host."https://{{ harbor['url'] }}"]
-          ca = "/etc/containerd/certs.d/{{ harbor['url'] }}/cert.crt"
+        [host."https://{{ harbor['external'] }}"]
+          ca = "/etc/containerd/certs.d/{{ harbor['external'] }}/cert.crt"
 
   - name: Copy crt
     ansible.posix.synchronize:
@@ -39,19 +39,19 @@
       dest: "{{ ansible_env.HOME }}/cert.crt"
     delegate_to: registry0
 
-  - name: "Copy crt to /etc/containerd/certs.d/{{ harbor['url'] }}/"
+  - name: "Copy crt to /etc/containerd/certs.d/{{ harbor['external'] }}/"
     become: yes
     ansible.builtin.copy:
       remote_src: yes
       src: "{{ ansible_env.HOME }}/cert.crt"
-      dest: "/etc/containerd/certs.d/{{ harbor['url'] }}/"
+      dest: "/etc/containerd/certs.d/{{ harbor['external'] }}/"
    
   - name: Copy cert into the docker dir
     become: yes
     ansible.builtin.copy:
       remote_src: yes
       src: "{{ ansible_env.HOME }}/cert.crt"
-      dest: "/etc/docker/certs.d/{{ harbor['url'] }}/"
+      dest: "/etc/docker/certs.d/{{ harbor['external'] }}/"
     when: inventory_hostname == 'cp0'
 
   - name: Remove temporary crt

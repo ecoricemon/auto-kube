@@ -1,8 +1,8 @@
 FROM python:3.10.8-alpine3.16 AS base_dev
-RUN pip install --no-cache-dir fastapi uvicorn[standard] requests
+RUN pip install --no-cache-dir fastapi==0.87.0 uvicorn[standard]==0.19.0 requests==2.28.1
 
 FROM base_dev AS base_test
-RUN pip install --no-cache-dir pytest
+RUN pip install --no-cache-dir pytest==7.2.0 httpx==0.23.0
 
 FROM base_dev AS dev
 WORKDIR /home

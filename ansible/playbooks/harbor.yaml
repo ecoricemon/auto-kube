@@ -20,13 +20,6 @@
   - dir: "{{ harbor['dir'] }}"
   - installer: "harbor-online-installer-{{ harbor['ver'] }}.tgz"
   tasks:
-  - name: Copy cert into the docker dir
-    become: yes
-    ansible.builtin.copy:
-      remote_src: yes
-      src: "{{ dir }}/certs/cert.crt"
-      dest: "/etc/docker/certs.d/{{ harbor['url'] }}/"
-
   - name: Make sure the dirs exist
     ansible.builtin.file:
       path: "{{ item }}"
@@ -74,6 +67,7 @@
       sed -Ei "s/port: 443/port: {{ harbor['port'] }}/" {{ dir }}/harbor/harbor.yml
       sed -Ei "s#(certificate:) ([a-zA-Z0-9/\.]+)#\1 {{ dir }}/certs/cert.crt#" {{ dir }}/harbor/harbor.yml
       sed -Ei "s#(private_key:) ([a-zA-Z0-9/\.]+)#\1 {{ dir }}/certs/cert.key#" {{ dir }}/harbor/harbor.yml
+      sed -Ei "s|^# external_url: .*|external_url: https://{{ harbor['external'] }}|" {{ dir }}/harbor/harbor.yml
       sed -Ei "s#^(data_volume:) ([a-zA-Z0-9/\.]+)#\1 {{ dir }}/data#" {{ dir }}/harbor/harbor.yml
       sed -Ei "s#^([ $(echo -e '\t')]*location:) ([a-zA-Z0-9/\.]+)#\1 {{ dir }}/log#" {{ dir }}/harbor/harbor.yml
       sed -Ei "s/^(harbor_admin_password:) ([a-zA-Z0-9]+)/\1 {{ harbor['pw'] }}/" {{ dir }}/harbor/harbor.yml

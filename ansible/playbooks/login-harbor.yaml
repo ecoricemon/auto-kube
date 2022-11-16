@@ -19,7 +19,7 @@
     try=12
     end=$((wait*try))
     while [ $t -lt $end ]; do
-      ready=$(curl -ksu 'robot$kube':{{ harbor_pw }} https://{{ harbor['url'] }}/api/v2.0/health | jq -r .status)
+      ready=$(curl -ksu 'robot$kube':{{ harbor_pw }} https://{{ harbor['external'] }}/api/v2.0/health | jq -r .status)
       if [ "$ready" = "healthy" ]; then
         exit 0
       else
@@ -32,7 +32,7 @@
     harbor_pw: "{{ lookup('file', '.keep/harbor-robot-kube-secret') }}"
 
 - name: Login to harbor
-  ansible.builtin.shell: docker login -u 'robot$kube' -p {{ harbor_pw }} {{ harbor['url'] }}
+  ansible.builtin.shell: docker login -u 'robot$kube' -p {{ harbor_pw }} {{ harbor['external'] }}
   vars:
     harbor_pw: "{{ lookup('file', '.keep/harbor-robot-kube-secret') }}"
 
