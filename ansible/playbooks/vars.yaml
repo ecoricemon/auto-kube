@@ -76,8 +76,8 @@ harbor:
   alt_names: ["{{ base['harbor']['domain'] }}"]
   port: "{{ base['harbor']['port'] }}"
   url: "{{ base['harbor']['domain'] }}:{{ base['harbor']['port'] }}" 
-  prj: "{{ base['harbor']['domain'] }}:{{ base['harbor']['port'] }}/library" 
   external: "reg.{{ base['envoy']['domain'] }}"
+  prj: "reg.{{ base['envoy']['domain'] }}/library"
   pw: "{{ base['harbor']['pw'] }}"
 
 gitea:
