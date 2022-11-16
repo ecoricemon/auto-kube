@@ -86,6 +86,7 @@ gitea:
   domain: "{{ base['gitea']['domain'] }}"
   alt_names: ["{{ base['gitea']['domain'] }}"]
   port: "{{ base['gitea']['port'] }}"
+  url: "{{ base['gitea']['domain'] }}:{{ base['gitea']['port'] }}" 
   external: "git.{{ base['envoy']['domain'] }}"
   pg_ver: "{{ base['gitea']['pg_ver'] }}"
   nginx_ver: "{{ base['gitea']['nginx_ver'] }}"

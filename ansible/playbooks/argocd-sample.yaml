@@ -1,0 +1,10 @@
+---
+- hosts: cp0
+  gather_facts: no
+  vars_files:
+  - vars.yaml
+  tasks:
+  - name: Apply argo cd sample
+    ansible.builtin.shell: >
+      kubectl apply -f https://{{ gitea['url'] }}/jenkins-automation/sample-config/raw/branch/main/myapp-application.yaml
+

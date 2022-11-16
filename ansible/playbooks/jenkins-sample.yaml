@@ -39,7 +39,7 @@
       dest: "{{ dir }}/"
 
   - name: Set HARBOR_URL in Jenkinsfile
-    ansible.builtin.shell: sed -i "s/HARBOR_URL/{{ harbor['url'] }}/g" {{ dir }}/sample/Jenkinsfile
+    ansible.builtin.shell: sed -i "s/HARBOR_URL/{{ harbor['external'] }}/g" {{ dir }}/sample/Jenkinsfile
 
   - name: Add, commit, and push it
     ansible.builtin.shell:
@@ -56,6 +56,49 @@
       path: "/job/gitea-folder/build?delay=0 -X POST"
       code: 302
     ansible.builtin.import_tasks: wait-jenkins.yaml
+
+  # Add configurations for Argo CD while building the sample
+  - name: Create sample-config repository
+    ansible.builtin.shell: |
+      curl -k https://{{ gitea['external'] }}/api/v1/orgs/jenkins-automation/repos?access_token={{ gitea_token }} \
+        -H 'accept: application/json' \
+        -H 'Content-Type: application/json' \
+        -d '{
+          "auto_init": true,
+          "default_branch": "main",
+          "license": "MIT",
+          "name": "sample-config",
+          "private": false,
+          "template": false,
+          "trust_model": "default"
+        }'
+
+  - name: Clone the repo
+    ansible.builtin.git:
+      repo: https://{{ gitea['external'] }}/jenkins-automation/sample-config.git
+      dest: "{{ dir }}/sample-config"
+      force: yes
+
+  - name: Copy sample-config
+    ansible.builtin.copy:
+      src: sample-config
+      dest: "{{ dir }}/"
+
+  - name: Set HARBOR_URL and GITEA_URL in the configurations
+    ansible.builtin.shell: |
+      sed -i "s/HARBOR_URL/{{ harbor['url'] }}/g" {{ dir }}/sample-config/dev/myapp-deployment.yaml
+      sed -i "s/GITEA_URL/{{ gitea['external'] }}/g" {{ dir }}/sample-config/myapp-application.yaml
+
+  # End of configuration for Argo CD
+  - name: Add, commit, and push it
+    ansible.builtin.shell:
+      chdir: "{{ dir }}/sample-config"
+      cmd: |
+        git config user.name "{{ gitea['jenkins_id'] }}"
+        git config user.email "jenkins@email.com"
+        git add .
+        git commit -m "Add sample configurations"
+        git push --repo https://{{ gitea['jenkins_id'] }}:{{ gitea['jenkins_pw'] }}@{{ gitea['external'] }}/jenkins-automation/sample-config.git
 
   - name: Wait for the first build to be finished
     ansible.builtin.shell: |

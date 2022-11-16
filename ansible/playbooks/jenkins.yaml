@@ -128,7 +128,7 @@
 
   - name: Get the harbor cert to use in the jenkins dind
     ansible.builtin.shell: >
-      openssl s_client -connect {{ harbor['url'] }} < /dev/null 2> /dev/null | \
+      openssl s_client -connect {{ harbor['external'] }}:443 < /dev/null 2> /dev/null | \
       sed -En '/^-----BEGIN CERTIFICATE-----$/,/^-----END CERTIFICATE-----$/p' > {{ dir }}/jenkins/docker-registry-cert/harbor.crt
 
   - name: Make jenkins docker compose file
@@ -240,7 +240,7 @@
             - {{ dir }}/jenkins/docker-data:/var/lib/docker
             - type: bind
               source: {{ dir }}/jenkins/docker-registry-cert
-              target: /etc/docker/certs.d/{{ harbor['url'] }}
+              target: /etc/docker/certs.d/{{ harbor['external'] }}
             command: --storage-driver=overlay2
 
   - ansible.builtin.package_facts:
