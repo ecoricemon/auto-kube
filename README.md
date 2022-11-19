@@ -31,10 +31,10 @@ Tested target machine environment likes below.
 
     ext.sh creates and copies a ssh key to communicate with the target machines. And it installs DNS(CoreDNS), Proxy(Envoy), Registry(Harbor), Git(Gitea), and CI(Jenkins) onto the target machines.
 
-1. Execute "/ansible/init.sh" to setup environment for K8s cluster
+1. Execute "/ansible/init.sh" to setup environment for Kubernetes cluster
 
-    init.sh do the jobs for ssh key and it installs basic K8s tools.
+    init.sh do the jobs for ssh key and it installs basic Kubernetes tools.
 
-1. Execute "/ansible/cluster.sh" to install K8s cluster
+1. Execute "/ansible/cluster.sh" to install Kubernetes cluster
 
     cluster.sh installs Kubernetes, CNI(Cilium), LoadBalancer(MetalLB), Dashboard(Kubernetes Dashboard), and CD(Argo CD) onto the target machines.
